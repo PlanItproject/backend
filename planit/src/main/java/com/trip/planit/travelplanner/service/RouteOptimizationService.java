@@ -4,6 +4,7 @@ import com.trip.planit.travelplanner.config.GoogleApiConfig;
 import com.trip.planit.travelplanner.model.SelectedPlace;
 import com.trip.planit.travelplanner.model.TravelPlan;
 import com.trip.planit.travelplanner.repository.TravelPlanRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -26,6 +27,8 @@ public class RouteOptimizationService {
         this.apiKey = config.getGoogleApiKey();
     }
 
+    // @Cacheable로 캐싱 적용
+    @Cacheable(value = "routeCache", key = "#planId + '_' + #mode", unless = "#result == null or #result.isEmpty()")
     public List<String> calculateOptimizedRoute(Long planId, String mode) {
         TravelPlan travelPlan = travelPlanRepository.findById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("여행 계획을 찾을 수 없습니다."));

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,6 +22,8 @@ public class GoogleApiService {
         this.config = config;
     }
 
+    // @Cacheable로 캐싱 적용
+    @Cacheable(value = "placesCache", key = "#destination", unless = "#result == null or #result.isEmpty()")
     public List<SelectedPlaceDTO> getPlaces(String destination) {
         String url = String.format(
                 "https://maps.googleapis.com/maps/api/place/textsearch/json?query=tourist+attractions+in+%s&key=%s",
