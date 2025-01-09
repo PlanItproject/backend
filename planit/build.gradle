@@ -26,11 +26,20 @@ repositories {
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
 	//	aws
 	implementation 'io.awspring.cloud:spring-cloud-starter-aws:2.4.4'
 	implementation 'commons-io:commons-io:2.14.0'
 	implementation 'commons-fileupload:commons-fileupload:1.5'
 	implementation 'org.apache.tika:tika-core:2.9.1'
+
+	//mysql
+	implementation 'mysql:mysql-connector-java:8.0.26'
+
+	//redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
