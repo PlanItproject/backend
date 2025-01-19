@@ -12,12 +12,11 @@ import java.sql.Timestamp;
 @Getter
 @Builder
 public class UserResponse {
-    private String loginId;
+    private String token;
     private String nickname;
     private String email;
     private MBTI mbti;
     private Platform platform;
     private Gender gender;
     private Language language;
-    private Timestamp createdAt;
 }

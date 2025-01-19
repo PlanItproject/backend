@@ -7,11 +7,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class UserRequest {
-    private String loginId;
+    private String email;
     private String password;
-    private String name;
-    private String nickname;
-    private String language;
-    private MBTI mbti;
-    private String profile;
 }

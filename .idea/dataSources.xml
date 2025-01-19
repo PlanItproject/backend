@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="planit@localhost" uuid="8c8e2e2b-3b7e-4cf1-b95f-4fd8f998b12e">
+    <data-source source="LOCAL" name="planit@localhost" uuid="00721aa2-9f43-42ec-9eaf-a6bc5f5e9fea">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
+      <imported>true</imported>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mysql://localhost:3306/planit</jdbc-url>
+      <jdbc-url>jdbc:mysql://localhost:3306/planit?rewriteBatchedStatements=true</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.host.port" />
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
