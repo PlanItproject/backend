@@ -46,6 +46,12 @@ jobs:
           echo "${{ secrets.YML }}" > ./application.yml # github actions에서 설정한 값을 application.yml 파일에 쓰기
         shell: bash
 
+      # JWT Secret 추가 예시
+      - name: Set JWT Secret
+        run: |
+          echo "jwt.secret=${{ secrets.JWT_SECRET }}" >> ./src/main/resources/application.yml
+        shell: bash
+
       # 환경별 yml 파일 생성(2) - dev
       - name: make application-dev.yml
         if: contains(github.ref, 'developer')
