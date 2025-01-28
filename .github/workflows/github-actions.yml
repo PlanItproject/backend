@@ -2,10 +2,10 @@
 name: CI/CD using github actions & docker
 
 # event trigger
-# main이나 develop 브랜치에 push가 되었을 때 실행
+# main이나 developer 브랜치에 push가 되었을 때 실행
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "main", "developer" ]
 
 permissions:
   contents: read
@@ -37,7 +37,8 @@ jobs:
       # 환경별 yml 파일 생성(1) - application.yml
       - name: make application.yml
         if: |
-          contains(github.ref, 'develop')
+          contains(github.ref, 'main') ||
+          contains(github.ref, 'developer')
         run: |
           mkdir ./src/main/resources # resources 폴더 생성
           cd ./src/main/resources # resources 폴더로 이동
@@ -56,7 +57,7 @@ jobs:
 
       # 환경별 yml 파일 생성(3) - prod
       - name: make application-prod.yml
-        if: contains(github.ref, 'developer')
+        if: contains(github.ref, 'main')
         run: |
           cd ./src/main/resources
           touch ./application-prod.yml
@@ -69,13 +70,13 @@ jobs:
 
       # docker build & push to production
       - name: Docker build & push to prod
-        if: contains(github.ref, 'developer')
+        if: contains(github.ref, 'main')
         run: |
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker build -f Dockerfile-dev -t ${{ secrets.DOCKER_USERNAME }}/docker-test-prod .
           docker push ${{ secrets.DOCKER_USERNAME }}/docker-test-prod
 
-      # docker build & push to develop
+      # docker build & push to developer
       - name: Docker build & push to dev
         if: contains(github.ref, 'developer')
         run: |
@@ -87,7 +88,7 @@ jobs:
       - name: Deploy to prod
         uses: appleboy/ssh-action@master
         id: deploy-prod
-        if: contains(github.ref, 'developer')
+        if: contains(github.ref, 'main')
         with:
           host: ${{ secrets.HOST_PROD }} # EC2 퍼블릭 IPv4 DNS
           username: ubuntu
@@ -99,7 +100,7 @@ jobs:
             sudo docker run -d -p 8082:8082 ${{ secrets.DOCKER_USERNAME }}/docker-test-prod
             sudo docker image prune -f
 
-      ## deploy to develop
+      ## deploy to developer
       - name: Deploy to dev
         uses: appleboy/ssh-action@master
         id: deploy-dev
