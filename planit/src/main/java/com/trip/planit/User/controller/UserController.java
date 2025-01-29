@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "User Controller(유저 API)")
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/v1/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -27,10 +27,6 @@ public class UserController {
     private final EmailService emailService;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
-    private final TemporaryUserRepository temporaryUserRepository;
-    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
-
-
 
     // 회원가입 API
     @PostMapping("/register")

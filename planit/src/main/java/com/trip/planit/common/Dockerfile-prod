@@ -1,0 +1,13 @@
+# Dockerfile-prod
+
+# 1. 베이스 이미지 설정 (Java 21 JRE만 포함)
+FROM openjdk:21-jre-slim
+
+# 2. 작업 디렉토리 설정
+WORKDIR /app
+
+# 3. 빌드된 애플리케이션 파일 복사
+COPY planit/build/libs/your-application.jar /app/your-application.jar
+
+# 4. 애플리케이션 실행
+CMD ["java", "-jar", "planit.jar"]
