@@ -1,9 +1,19 @@
 spring:
-  profiles: prod
+  application:
+    name: planit
+
+  cache:
+    type: redis
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
   datasource:
-    url: jdbc:mysql://13.210.70.9:3306/planit
-    username: backend
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/planit?rewriteBatchedStatements=true
+    username: root
     password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:
@@ -31,7 +41,14 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+jwt:
+  secret: ${JWT_SECRET}
+
+google:
+  api:
+    key: ${GOOGLE_API_KEY}
+
 logging:
   level:
-    org.springframework.web: INFO
-    org.springframework.web.servlet.DispatcherServlet: INFO
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet.DispatcherServlet: TRACE
