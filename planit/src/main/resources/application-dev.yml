@@ -1,0 +1,20 @@
+spring:
+  config:
+    activate:
+      on-profile: dev  # ✅ 올바른 방식
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://13.210.70.9:3306/planit?rewriteBatchedStatements=true
+    username: backend
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet.DispatcherServlet: TRACE
