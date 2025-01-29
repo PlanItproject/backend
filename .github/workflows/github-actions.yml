@@ -67,7 +67,9 @@ jobs:
 
       # 8. Gradle 빌드
       - name: Build with Gradle
-        run: cd planit ./gradlew build -x test
+        run: |
+          cd planit
+          ./gradlew build -x test
 
       # 9. Docker 로그인
       - name: Docker login
