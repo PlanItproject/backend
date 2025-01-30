@@ -92,7 +92,17 @@ jobs:
           docker build -f planit/Dockerfile-dev -t ${{ secrets.DOCKER_USERNAME }}/docker-test-dev planit
           docker push ${{ secrets.DOCKER_USERNAME }}/docker-test-dev
 
-      # 12. 프로덕션 배포
+      # 12. 파일 존재 확인 (Gradle Wrapper 파일들)
+      - name: Verify Gradle Wrapper Files
+        run: |
+          echo "Listing planit/gradle/wrapper/"
+          ls -la planit/gradle/wrapper/
+          echo "Listing planit/"
+          ls -la planit/
+          echo "Listing planit/src/"
+          ls -la planit/src/
+
+      # 13. 프로덕션 배포
       - name: Deploy to prod
         uses: appleboy/ssh-action@master
         if: contains(github.ref, 'main')
@@ -107,7 +117,7 @@ jobs:
             sudo docker run -d -p 8082:8082 ${{ secrets.DOCKER_USERNAME }}/docker-test-prod
             sudo docker image prune -f
 
-      # 13. 개발 환경 배포
+      # 14. 개발 환경 배포
       - name: Deploy to dev
         uses: appleboy/ssh-action@master
         if: contains(github.ref, 'developer')
