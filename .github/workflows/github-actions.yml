@@ -77,16 +77,6 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 10. 파일 존재 확인 (Gradle Wrapper 파일들)
-      - name: Verify Gradle Wrapper Files
-        run: |
-          echo "Listing planit/gradle/wrapper/"
-          ls -la planit/gradle/wrapper/
-          echo "Listing planit/"
-          ls -la planit/
-          echo "Listing planit/src/"
-          ls -la planit/src/
-
       # 11. Docker 빌드 & 푸시 (프로덕션)
       - name: Docker build & push to prod
         if: contains(github.ref, 'main')
