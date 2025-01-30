@@ -7,7 +7,7 @@ FROM openjdk:21-jre-slim
 WORKDIR /app
 
 # 3. 빌드된 애플리케이션 파일 복사
-COPY planit/build/libs/your-application.jar /app/your-application.jar
+COPY build/libs/planit.jar /app/planit.jar
 
 # 4. 애플리케이션 실행
-CMD ["java", "-jar", "planit.jar"]
+CMD ["java", "-jar", "/app/planit.jar"]

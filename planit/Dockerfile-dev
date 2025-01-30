@@ -7,9 +7,9 @@ FROM openjdk:21-jdk-slim
 WORKDIR /app
 
 # 3. 프로젝트 파일 복사
-COPY planit/gradlew planit/gradle /app/planit/
-COPY planit/build.gradle planit/settings.gradle /app/planit/
-COPY planit/src /app/planit/src
+COPY gradlew gradle /app/planit/
+COPY build.gradle settings.gradle /app/planit/
+COPY src /app/planit/src
 
 # 4. Gradle 빌드 및 애플리케이션 빌드
 RUN apt-get update && apt-get install -y bash
