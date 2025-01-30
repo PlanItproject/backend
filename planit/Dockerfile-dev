@@ -1,16 +1,29 @@
 # 1. 베이스 이미지 설정
 FROM openjdk:21-jdk-slim
 
-WORKDIR /app
+# 2. WORKDIR 설정 (중요!)
+WORKDIR /app/planit
 
-# 3. 프로젝트 파일 복사
-COPY gradlew gradle /app/planit/
-COPY build.gradle settings.gradle /app/planit/
+# 3. Gradle Wrapper 파일 복사 (전체 디렉토리 복사)
+COPY gradle /app/planit/gradle
+COPY gradlew /app/planit/
+
+# 4. 프로젝트 파일 복사 (src, build.gradle, settings.gradle)
 COPY src /app/planit/src
+COPY build.gradle /app/planit/
+COPY settings.gradle /app/planit/
 
-# 4. 빌드
+# 5. 빌드에 필요한 추가 패키지 설치 (bash)
 RUN apt-get update && apt-get install -y bash
-RUN chmod +x planit/gradlew
-RUN ./planit/gradlew build -x test --no-daemon
 
-CMD ["java", "-jar", "planit/build/libs/planit.jar"]
+# 6. Gradle Wrapper 실행 권한 부여
+RUN chmod +x gradlew
+
+# 7. Gradle 빌드 (테스트 제외)
+RUN ./gradlew build -x test --no-daemon
+
+# 8. 실행 파일 복사 (빌드 결과물을 이미지에 포함)
+COPY build/libs/planit.jar /app/planit/planit.jar
+
+# 9. 실행
+CMD ["java", "-jar", "planit.jar"]
