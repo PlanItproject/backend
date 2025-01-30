@@ -88,7 +88,7 @@ jobs:
       - name: Docker build & push to dev
         if: contains(github.ref, 'developer')
         run: |
-          docker build -f planit/Dockerfile-dev -t ${{ secrets.DOCKER_USERNAME }}/docker-test-dev planit
+          docker build -f planit/Dockerfile-dev -t ${{ secrets.DOCKER_USERNAME }}/docker-test-dev .
           docker push ${{ secrets.DOCKER_USERNAME }}/docker-test-dev
 
       # 12. 프로덕션 배포
