@@ -46,10 +46,6 @@ public class User {
     @Column(name = "platform", length = 20, nullable = false)
     private Platform platform;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "language", length = 20, nullable = false)
-    private Language language;
-
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt; // 수정

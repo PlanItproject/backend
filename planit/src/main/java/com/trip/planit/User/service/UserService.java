@@ -35,22 +35,33 @@ public class UserService {
                 .nickname(user.getNickname())
                 .mbti(user.getMbti())
                 .gender(user.getGender())
-                .language(user.getLanguage())
                 .build();
     }
 
-    // 회원가입 - 임시 회원으로 저장
-    public void saveTemporaryUser(String email, String password, String nickname, MBTI mbti, Gender gender, Platform platform, Language language) {
+    // 회원가입 1단계 - 임시 회원으로 저장
+    public void saveTemporaryUser(String email, String password, Platform platform) {
         TemporaryUser temporaryUser = TemporaryUser.builder()
                 .email(email)
                 .password(passwordEncoder.encode(password))
-                .nickname(nickname)
-                .mbti(mbti)
-                .gender(gender)
                 .platform(platform)
-                .language(language)
                 .build();
         temporaryUserRepository.save(temporaryUser);
+    }
+
+    // 회원가입 3단계 - 닉네임, MBTI, 성별 입력 및 최종 회원가입 자동 완료
+    @Transactional
+    public void completeFinalRegistration(String email, String nickname, MBTI mbti, Gender gender) {
+        TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
+
+        // 임시 사용자 정보 업데이트
+        tempUser.setNickname(nickname);
+        tempUser.setMbti(mbti);
+        tempUser.setGender(gender);
+        temporaryUserRepository.save(tempUser);
+
+        // 닉네임, MBTI, 성별 입력이 끝났다면 자동으로 최종 회원가입 처리
+        completeRegistration(email);
     }
 
     // 회원가입 - 최종 회원가입 완료
@@ -59,22 +70,30 @@ public class UserService {
         TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
+        // Google 로그인 사용자라면 비밀번호를 저장하지 않음
+        String password = tempUser.getPlatform() == Platform.GOOGLE ? null : tempUser.getPassword();
+
         User user = User.builder()
                 .email(tempUser.getEmail())
-                .password(tempUser.getPassword())
+                .password(password) // Google 사용자는 null 저장
                 .nickname(tempUser.getNickname())
                 .mbti(tempUser.getMbti())
                 .gender(tempUser.getGender())
-                .language(tempUser.getLanguage())
                 .platform(tempUser.getPlatform())
                 .createdAt(LocalDateTime.now())
                 .build();
 
-
         userRepository.save(user);
-        emailVerificationRepository.deleteByTemporaryUserId(tempUser.getId());
+
+        // 일반 회원가입 사용자의 경우, 이메일 인증 정보 삭제
+        if (tempUser.getPlatform() == Platform.APP) {
+            emailVerificationRepository.deleteByTemporaryUserId(tempUser.getId());
+        }
+
+        // 임시 사용자 정보 삭제
         temporaryUserRepository.delete(tempUser);
     }
+
 
     // 회원가입 - 모든 임시 회원 정보 삭제
     public void deleteTemporaryUsers() {
