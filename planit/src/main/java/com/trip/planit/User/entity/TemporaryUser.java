@@ -22,6 +22,9 @@ public class TemporaryUser {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "profile")
+    private String profile;
+
     @Column(nullable = false)
     private String nickname;
 
