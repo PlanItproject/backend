@@ -71,6 +71,13 @@ public class EmailService {
                 });
     }
 
+    // UserService.java
+
+    // 임시 사용자에 저장 여부
+    public boolean existsTemporaryUserByEmail(String email) {
+        return temporaryUserRepository.findByEmail(email).isPresent();
+    }
+
     // 인증 코드 검증
     public boolean verifyEmailCode(String email, int code) {
         TemporaryUser temporaryUser = temporaryUserRepository.findByEmail(email)
