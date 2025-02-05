@@ -1,5 +1,7 @@
 package com.trip.planit.User.service;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.trip.planit.User.config.exception.BadRequestException;
 import com.trip.planit.User.dto.UserResponse;
 import com.trip.planit.User.entity.*;
@@ -8,14 +10,23 @@ import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
+    private final AmazonS3 amazonS3;
+
+    @Value("${aws.s3.bucketName}")
+    private String bucketName;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -38,6 +49,45 @@ public class UserService {
                 .build();
     }
 
+    // 이미지 업로드
+    public String uploadProfileImage(MultipartFile profileImage) {
+        String originalFilename = profileImage.getOriginalFilename();
+        String savedFilename = UUID.randomUUID().toString() + "_" + originalFilename;
+        String key = "profile-images/" + savedFilename; // S3 내 저장 경로
+
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(profileImage.getSize());
+        metadata.setContentType(profileImage.getContentType());
+
+        try {
+            amazonS3.putObject(bucketName, key, profileImage.getInputStream(), metadata);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload profile image to S3", e);
+        }
+
+        return amazonS3.getUrl(bucketName, key).toString();
+    }
+
+    // 이미지 업데이트
+    @Transactional
+    public void updateUserProfileImage(Long userId, MultipartFile profileImage) {
+        // 1) DB에서 기존 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        // 2) 프로필 이미지가 전달된 경우에만 업데이트
+        if (profileImage != null && !profileImage.isEmpty()) {
+            String profileUrl = uploadProfileImage(profileImage);
+            user.setProfile(profileUrl);
+        } else {
+            throw new BadRequestException("Profile image file is missing.");
+        }
+
+        // 3) 변경사항 DB 반영
+        userRepository.save(user);
+    }
+
+
     // 회원가입 1단계 - 임시 회원으로 저장
     public void saveTemporaryUser(String email, String password, Platform platform) {
         TemporaryUser temporaryUser = TemporaryUser.builder()
@@ -50,7 +100,7 @@ public class UserService {
 
     // 회원가입 3단계 - 닉네임, MBTI, 성별 입력 및 최종 회원가입 자동 완료
     @Transactional
-    public void completeFinalRegistration(String email, String nickname, MBTI mbti, Gender gender) {
+    public void completeFinalRegistration(String email, String nickname, MBTI mbti, Gender gender, String profile) {
         TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
@@ -58,6 +108,11 @@ public class UserService {
         tempUser.setNickname(nickname);
         tempUser.setMbti(mbti);
         tempUser.setGender(gender);
+
+        if (profile != null) {
+            tempUser.setProfile(profile);
+        }
+
         temporaryUserRepository.save(tempUser);
 
         // 닉네임, MBTI, 성별 입력이 끝났다면 자동으로 최종 회원가입 처리
@@ -80,6 +135,7 @@ public class UserService {
                 .mbti(tempUser.getMbti())
                 .gender(tempUser.getGender())
                 .platform(tempUser.getPlatform())
+                .profile(tempUser.getProfile())
                 .createdAt(LocalDateTime.now())
                 .build();
 

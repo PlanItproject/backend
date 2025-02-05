@@ -62,6 +62,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // OAuth2 Client
 	implementation 'org.springframework.boot:spring-boot-starter-security' // Spring Security
 
+	// Image
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.511'
 }
 
 tasks.named('test') {

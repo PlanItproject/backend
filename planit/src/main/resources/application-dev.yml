@@ -50,4 +50,9 @@ springdoc:
   swagger-ui:
     server-url: http://13.210.70.9:8080
 
-
+aws:
+  s3:
+    accessKey: ${AWS_ACCESS_KEY_ID}
+    secretKey: ${AWS_SECRET_ACCESS_KEY}
+    region: ${AWS_REGION}
+    bucketName: ${AWS_S3_BUCKET_NAME}

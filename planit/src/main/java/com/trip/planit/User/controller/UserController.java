@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @Tag(name = "User Controller(유저 API)")
@@ -111,19 +112,26 @@ public class UserController {
         return ResponseEntity.ok("Verification code has been resent.");
     }
 
-    // 회원가입 API - 3단계
+    // 회원가입 API - 3단계 (닉네임, MBTI, 성별 입력 + 프로필 사진 업로드 후 최종 회원가입 완료)
     @PostMapping("/register/final")
-    @Operation(summary = "회원가입 3단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별 입력 후 최종 회원가입 완료")
+    @Operation(summary = "회원가입 3단계 - 추가 정보 입력",
+            description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
     public ResponseEntity<String> completeRegistration(
             @RequestParam(required = false) String email, // 일반 회원가입만 입력 필요
             @RequestParam String nickname,
             @RequestParam MBTI mbti,
-            @RequestParam Gender gender) {
+            @RequestParam Gender gender,
+            @RequestParam(required = false) MultipartFile profile) { // ✅ MultipartFile로 프로필 이미지 받기
 
-        // Google 로그인 사용자 검사 - 프론트한테 넘기기
+        // 프로필 이미지가 첨부된 경우 파일 업로드 처리 후 URL을 받아옴
+        String profileImageUrl = null;
+        if (profile != null && !profile.isEmpty()) {
+            profileImageUrl = userService.uploadProfileImage(profile); // ✅ S3에 업로드 후 URL 반환
+        }
 
-        // 임시 사용자 정보 업데이트 및 최종 회원가입 처리
-        userService.completeFinalRegistration(email, nickname, mbti, gender);
+        // 최종 회원가입 처리 (S3 업로드된 URL을 전달)
+        userService.completeFinalRegistration(email, nickname, mbti, gender, profileImageUrl);
+
         return ResponseEntity.ok("Final registration has been completed.");
     }
 
@@ -171,6 +179,22 @@ public class UserController {
         }
         throw new BadRequestException("User is not authenticated.");
     }
+
+    // 프로필 사진 수정
+    @PutMapping("/profile/image")
+    @Operation(summary = "프로필 사진 수정", description = "기존 프로필 사진을 새로운 이미지로 교체")
+    public ResponseEntity<String> updateProfileImage(
+            @RequestParam(required = false) MultipartFile profileImage
+    ) {
+        // 1) 로그인한 사용자 ID 가져오기
+        Long userId = getAuthenticatedUserId();
+
+        // 2) Service 로직 호출: 프로필 사진만 변경
+        userService.updateUserProfileImage(userId, profileImage);
+
+        return ResponseEntity.ok("Profile image updated successfully.");
+    }
+
 
     // 회원탈퇴
     @DeleteMapping("/profile/delete")
