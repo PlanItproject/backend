@@ -95,6 +95,22 @@ public class UserController {
         }
     }
 
+    // 이메일 인증코드 재전송
+    @PostMapping("/email/resend")
+    @Operation(summary = "이메일 인증 코드 재전송", description = "이미 등록한 이메일로 인증 코드를 재전송합니다.")
+    public ResponseEntity<String> resendVerificationEmail(@RequestParam String email) {
+
+        // 임시 사용자 존재 여부 확인
+        if (!emailService.existsTemporaryUserByEmail(email)) {
+            throw new BadRequestException("No temporary user found for this email, or user is already registered.");
+        }
+
+        // 이메일 인증 코드 재전송
+        emailService.sendVerificationCode(email);
+
+        return ResponseEntity.ok("Verification code has been resent.");
+    }
+
     // 회원가입 API - 3단계
     @PostMapping("/register/final")
     @Operation(summary = "회원가입 3단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별 입력 후 최종 회원가입 완료")
@@ -110,6 +126,7 @@ public class UserController {
         userService.completeFinalRegistration(email, nickname, mbti, gender);
         return ResponseEntity.ok("Final registration has been completed.");
     }
+
 
     // 일반 로그인
     @PostMapping("/login")
