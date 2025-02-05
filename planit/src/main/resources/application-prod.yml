@@ -2,8 +2,8 @@ spring:
   profiles: prod
 
   datasource:
-    url: jdbc:mysql://13.210.70.9:3306/planit
-    username: backend
+    url: jdbc:mysql://13.210.70.9:3306/planit_prod
+    username: prod_user
     password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:

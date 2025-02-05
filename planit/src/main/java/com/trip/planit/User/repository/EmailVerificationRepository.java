@@ -18,4 +18,7 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
 
     void deleteByTemporaryUserId(Long temporaryUserId);
 
+    void deleteByTemporaryUser_Email(String email);
+
+
 }

@@ -1,5 +1,6 @@
 package com.trip.planit.User.service;
 
+import com.trip.planit.User.config.exception.BadRequestException;
 import com.trip.planit.User.dto.UserResponse;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
@@ -80,4 +81,21 @@ public class UserService {
         emailVerificationRepository.deleteAll();
         temporaryUserRepository.deleteAll();
     }
+
+    @Transactional
+    public void deleteUserAndRelatedData(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found."));
+
+        // 이메일 인증 기록 삭제
+        emailVerificationRepository.deleteByTemporaryUser_Email(user.getEmail());
+
+        // 임시 사용자 정보 삭제
+        temporaryUserRepository.deleteByEmail(user.getEmail());
+
+        // 유저 삭제
+        userRepository.delete(user);
+    }
+
+
 }
