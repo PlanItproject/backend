@@ -12,8 +12,8 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/planit?rewriteBatchedStatements=true
-    username: root
+    url: jdbc:mysql://13.210.70.9:3306/planit?rewriteBatchedStatements=true
+    username: backend
     password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:

@@ -16,6 +16,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+
 
 @Tag(name = "User Controller(유저 API)")
 @RestController
@@ -93,4 +97,29 @@ public class UserController {
                     .build();
         }
     }
+
+    // 로그인 된 사용자 정보를 가져옴.
+    private Long getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername(); // 현재 로그인한 사용자의 이메일 가져오기
+            return userService.getUserByEmail(email).getUser_id(); // 이메일로 User 조회 후 user_id 반환
+        }
+        throw new BadRequestException("User is not authenticated.");
+    }
+
+    // 회원탈퇴
+    @DeleteMapping("/profile/delete")
+    @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자의 계정을 삭제")
+    public ResponseEntity<String> deleteUser() {
+        try {
+            Long userId = getAuthenticatedUserId(); // 현재 로그인한 사용자 ID 가져오기
+            userService.deleteUserAndRelatedData(userId);
+            return ResponseEntity.ok("User deleted successfully.");
+        } catch (Exception e) {
+            throw new BadRequestException("An error occurred while deleting the user.");
+        }
+    }
+
 }
