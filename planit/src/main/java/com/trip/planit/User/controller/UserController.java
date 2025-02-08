@@ -1,8 +1,8 @@
 package com.trip.planit.User.controller;
 
+import com.trip.planit.User.dto.RegistrationResponse;
 import com.trip.planit.User.dto.UserRequest;
 import com.trip.planit.User.dto.UserResponse;
-import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.security.JwtUtil;
 import com.trip.planit.User.service.EmailService;
 import com.trip.planit.User.service.UserService;
@@ -10,9 +10,8 @@ import com.trip.planit.User.entity.*;
 import com.trip.planit.User.config.exception.BadRequestException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -25,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "User Controller(유저 API)")
 @RestController
-@RequestMapping("/v1/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -34,15 +33,14 @@ public class UserController {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
 
-
-    // 회원가입 API - 1단계 (platform 자동 설정, Google 로그인 시 OAuth에서 이메일 자동 적용)
+    // 회원가입 API - 1단계
     @PostMapping("/register")
     @Operation(summary = "회원가입 1단계", description = "회원가입 정보를 입력하고 이메일 인증 요청")
-    public ResponseEntity<String> registerUser(@RequestParam(required = false) String email,
+    public RegistrationResponse registerUser(@RequestParam(required = false) String email,
                                                @RequestParam(required = false) String password,
-                                               @RequestParam(required = false) Boolean isGoogleLogin) {
-
-        Platform platform = Platform.APP; // 기본값 APP
+                                               @RequestParam Boolean isGoogleLogin) {
+       // 일반 -> platform = APP 자동 설정
+        Platform platform = Platform.APP;
 
         if (Boolean.TRUE.equals(isGoogleLogin)) {
             platform = Platform.GOOGLE;
@@ -50,24 +48,30 @@ public class UserController {
             // OAuth2 인증이 완료된 상태에서 SecurityContext에서 이메일 정보를 가져옴
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (!(auth.getPrincipal() instanceof OAuth2User oauth2User)) {
-                throw new BadRequestException("OAuth2 인증 정보를 찾을 수 없습니다.");
+                throw new BadRequestException("OAuth2 authentication information could not be found.");
             }
 
             email = (String) oauth2User.getAttributes().get("email");
 
             if (email == null || email.isBlank()) {
-                throw new BadRequestException("Google 계정 이메일을 찾을 수 없습니다.");
+                throw new BadRequestException("Google account email could not be found.");
             }
 
-            // Google 로그인인 경우 password는 필요 없음 (null로 처리)
+            // Google 로그인 - OAuth에서 이메일 자동 적용
             userService.saveTemporaryUser(email, null, platform);
 
-            return ResponseEntity.ok("Google 로그인 감지됨. 추가 정보를 입력하여 최종 회원가입을 완료해 주세요.");
+            String token = jwtUtil.generateToken(email);
+
+            return RegistrationResponse.builder()
+                    .googleLogin(true)
+                    .token(token)
+                    .build();
         } else {
-            // 일반 회원가입의 경우 password 필수
+
             if (email == null || email.isBlank()) {
                 throw new BadRequestException("Email is required.");
             }
+
             if (password == null || password.isBlank()) {
                 throw new BadRequestException("Password is required.");
             }
@@ -75,7 +79,10 @@ public class UserController {
             userService.saveTemporaryUser(email, password, platform);
             emailService.sendVerificationCode(email);
 
-            return ResponseEntity.ok("Your registration request has been received. Please complete email verification.");
+            return RegistrationResponse.builder()
+                    .googleLogin(false)
+                    .build();
+
         }
     }
 
@@ -92,7 +99,7 @@ public class UserController {
         } catch (Exception e) {
             // 예외 발생 시 임시 사용자 삭제
             userService.deleteTemporaryUsers();
-            throw e; // 예외를 다시 던져서 상위에서 처리
+            throw e;
         }
     }
 
@@ -114,25 +121,47 @@ public class UserController {
 
     // 회원가입 API - 3단계 (닉네임, MBTI, 성별 입력 + 프로필 사진 업로드 후 최종 회원가입 완료)
     @PostMapping("/register/final")
-    @Operation(summary = "회원가입 3단계 - 추가 정보 입력",
-            description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
-    public ResponseEntity<String> completeRegistration(
+    @Operation(summary = "회원가입 3단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
+    public RegistrationResponse completeRegistration(
             @RequestParam(required = false) String email, // 일반 회원가입만 입력 필요
             @RequestParam String nickname,
             @RequestParam MBTI mbti,
             @RequestParam Gender gender,
-            @RequestParam(required = false) MultipartFile profile) { // ✅ MultipartFile로 프로필 이미지 받기
+            @RequestParam(required = false) MultipartFile profile,
+            HttpServletRequest request) {
+
+        // 구글 로그인 사용자의 경우, JWT 토큰이 Authorization 헤더에 포함되어 있음
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            // jwtUtil.extractEmail() 메서드가 토큰에서 이메일을 추출한다고 가정
+            String tokenEmail = jwtUtil.extractemail(token);
+
+            // 만약 파라미터로 email이 넘어오지 않았다면 토큰에서 추출한 이메일을 사용
+            if (email == null || email.isBlank()) {
+                email = tokenEmail;
+            }
+        }
+
+        // 이메일이 여전히 null 또는 비어있으면 예외 발생 (일반 회원가입의 경우)
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException("Email information is required to complete the final registration.");
+        }
 
         // 프로필 이미지가 첨부된 경우 파일 업로드 처리 후 URL을 받아옴
         String profileImageUrl = null;
         if (profile != null && !profile.isEmpty()) {
-            profileImageUrl = userService.uploadProfileImage(profile); // ✅ S3에 업로드 후 URL 반환
+            profileImageUrl = userService.uploadProfileImage(profile);
         }
 
         // 최종 회원가입 처리 (S3 업로드된 URL을 전달)
         userService.completeFinalRegistration(email, nickname, mbti, gender, profileImageUrl);
 
-        return ResponseEntity.ok("Final registration has been completed.");
+        String finalToken = jwtUtil.generateToken(email);
+
+        return RegistrationResponse.builder()
+                .token(finalToken)
+                .build();
     }
 
 

@@ -40,7 +40,6 @@ public class JwtUtil {
                 .compact();
     }
 
-
     public String extractemail(String token) {
         String email = Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
