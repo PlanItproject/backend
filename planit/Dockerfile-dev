@@ -20,4 +20,4 @@ RUN ./gradlew build -x test --no-daemon
 EXPOSE 8080
 
 # 5. 애플리케이션 실행
-CMD ["java", "-jar", "build/libs/planit.jar"]
+CMD ["./gradlew", "bootRun"]
