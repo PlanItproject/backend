@@ -17,4 +17,4 @@ RUN chmod +x ./gradlew
 RUN ./gradlew build -x test --no-daemon
 
 # 5. 애플리케이션 실행
-CMD ["java", "-jar", "build/libs/planit.jar"]
+CMD ["java", "-jar", "build/libs/planit-0.0.1-SNAPSHOT.jar"]
