@@ -10,11 +10,14 @@ COPY src ./src
 COPY gradle ./gradle
 
 # 3. Gradle Wrapper 실행 준비
-RUN apt-get update && apt-get install -y bash
+#RUN apt-get update && apt-get install -y bash
 RUN chmod +x ./gradlew
 
 # 4. Gradle 빌드 (테스트 제외)
 RUN ./gradlew build -x test --no-daemon
+
+# 6. 컨테이너 외부에 노출할 포트 설정 (여기서는 8080)
+EXPOSE 8080
 
 # 5. 애플리케이션 실행
 CMD ["java", "-jar", "build/libs/planit.jar"]
