@@ -1,11 +1,11 @@
 spring:
   config:
     activate:
-      on-profile: dev  # ✅ 올바른 방식
+      on-profile: dev
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://13.210.70.9:3306/planit?rewriteBatchedStatements=true
+    url: jdbc:mysql://13.210.70.9:3306/planit
     username: backend
     password: ${SPRING_DATASOURCE_PASSWORD}
 

@@ -14,7 +14,7 @@
       </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="planit_dev" uuid="716f558d-0c8d-4484-94d9-da6f03fa076d">
+    <data-source source="LOCAL" name="planit" uuid="716f558d-0c8d-4484-94d9-da6f03fa076d">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
       <imported>true</imported>
