@@ -7,7 +7,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://13.210.70.9:3306/planit
     username: backend
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    password: planIt@0331
 
   jpa:
     properties:
