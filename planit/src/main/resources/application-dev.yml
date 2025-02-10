@@ -50,7 +50,7 @@ logging:
 
 springdoc:
   swagger-ui:
-    server-url: http://13.210.70.9:8080
+    server-url: http://3.27.120.252:8080
 
 aws:
   s3:
