@@ -10,7 +10,7 @@ WORKDIR /app
 COPY gradlew .
 COPY gradle/ gradle/
 
-# 빌드 스크립트 복사
+# Gradle 빌드 스크립트 복사
 COPY build.gradle .
 COPY settings.gradle .
 
@@ -34,9 +34,11 @@ WORKDIR /app
 # 애플리케이션이 사용할 포트 노출 (여기서는 8080)
 EXPOSE 8080
 
-# 빌드 단계에서 생성된 JAR 파일 복사
-# (프로젝트에 따라 경로가 달라질 수 있음. 여기서는 /app/build/libs/planit.jar라고 가정)
-COPY --from=build /app/build/libs/planit.jar planit.jar
+# 빌드 단계에서 생성된 JAR 파일 경로를 ARG로 지정 (필요 시 경로를 수정하세요)
+ARG JAR_FILE=/app/build/libs/planit.jar
 
-# 애플리케이션 실행
-CMD ["java", "-jar", "planit.jar"]
+# 빌드 단계에서 생성된 JAR 파일을 app.jar로 복사
+COPY --from=build ${JAR_FILE} app.jar
+
+# 컨테이너 시작 시 ENTRYPOINT를 이용하여 docker 프로파일로 실행
+ENTRYPOINT ["java", "-Dspring.profiles.active=docker", "-jar", "app.jar"]
