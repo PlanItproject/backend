@@ -11,6 +11,8 @@ spring:
       port: 6379
 
   datasource:
+    hikari:
+      connectionTimeout: 60000
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://3.27.120.252:3306/planit?rewriteBatchedStatements=true
     username: backend

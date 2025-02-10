@@ -4,6 +4,8 @@ spring:
       on-profile: dev
 
   datasource:
+    hikari:
+      connectionTimeout: 60000
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://3.27.120.252:3306/planit
     username: backend
