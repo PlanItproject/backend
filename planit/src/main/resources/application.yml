@@ -12,7 +12,7 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://13.210.70.9:3306/planit?rewriteBatchedStatements=true
+    url: jdbc:mysql://3.27.120.252:3306/planit?rewriteBatchedStatements=true
     username: backend
     password: planIt@0331
 
