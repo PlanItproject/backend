@@ -3,6 +3,10 @@ spring:
     activate:
       on-profile: dev
 
+server:
+  port: 9090
+
+
   datasource:
     hikari:
       connectionTimeout: 60000
