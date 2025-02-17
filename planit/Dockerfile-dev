@@ -1,4 +1,6 @@
 FROM openjdk:21-slim
 ARG JAR_FILE=*.jar
 COPY ${JAR_FILE} app.jar
+
+EXPOSE 9090
 ENTRYPOINT ["java","-jar","/app.jar"]
