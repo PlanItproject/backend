@@ -3,15 +3,11 @@ spring:
     activate:
       on-profile: dev
 
-server:
-  port: 9090
-
-
   datasource:
     hikari:
       connectionTimeout: 60000
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://docker-mysql-test.cl82gmc8wwsn.ap-southeast-2.rds.amazonaws.com:3306/planit
+    url: jdbc:mysql://docker-mysql-test.cl82gmc8wwsn.ap-southeast-2.rds.amazonaws.com:3306/docker-mysql-test
     username: backend
     password: planIt0331!
 
@@ -39,6 +35,9 @@ server:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+
+server:
+  port: 9090
 
 jwt:
   secret: ${JWT_SECRET}
