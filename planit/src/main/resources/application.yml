@@ -14,8 +14,8 @@ spring:
     hikari:
       connectionTimeout: 60000
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://docker-mysql-test.cl82gmc8wwsn.ap-southeast-2.rds.amazonaws.com:3306/docker-mysql-test?rewriteBatchedStatements=true
-    username: backend
+    url: jdbc:mysql://docker-mysql-test.cl82gmc8wwsn.ap-southeast-2.rds.amazonaws.com:3306/planit?rewriteBatchedStatements=true
+    username: user
     password: planIt0331!
 
   jpa:
