@@ -1,6 +1,7 @@
 FROM openjdk:21-slim
 ARG JAR_FILE=*.jar
 EXPOSE 9090
+ENV JWT_SECRET=hAKCk361U9Ak4CUySxN9SbaIFh5zzS34gHFLzRvftYliSkyf18HyU3ZF76nHdTQXdjx5C3Wp1
 
 COPY build/libs/planit.jar planit.jar
 ENTRYPOINT ["java", "-jar", "/planit.jar"]
