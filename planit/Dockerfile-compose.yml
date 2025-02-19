@@ -1,10 +1,7 @@
 version: "3.9"
 services:
   planit:
-    build:
-      context: .
-      dockerfile: Dockerfile-dev
+    image: docker-test-dev
+    env_file: env-file.env
     ports:
       - "9090:9090"
-    env_file:
-      - env-file.env
