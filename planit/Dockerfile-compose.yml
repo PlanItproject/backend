@@ -1,9 +1,12 @@
+version: "3"
+
 services:
   planit:
     build:
       context: .
-      dockerfile: Dockerfile-dev
+      dockerfile: Dockerfile-dev  # 또는 원하는 Dockerfile 이름
     image: docker-test-dev
-    env_file: env-file.env
+    env_file:
+      - env-file.env
     ports:
       - "9090:9090"
