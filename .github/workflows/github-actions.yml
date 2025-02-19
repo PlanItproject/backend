@@ -11,7 +11,6 @@ jobs:
   CI-CD:
     runs-on: ubuntu-latest
     steps:
-
       # 1. 코드 체크아웃
       - name: Checkout code
         uses: actions/checkout@v3
@@ -34,7 +33,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # 4. 환경별 YML 파일 생성 - application.yml
+      # 4. 환경별 application.yml 생성
       - name: Create application.yml
         if: |
           contains(github.ref, 'main') ||
@@ -50,14 +49,14 @@ jobs:
           echo "jwt.secret=${{ secrets.JWT_SECRET }}" >> ./src/main/resources/application.yml
         shell: bash
 
-      # 6. 환경별 YML 파일 생성 - application-dev.yml
+      # 6. 환경별 application-dev.yml 생성 (developer 브랜치)
       - name: Create application-dev.yml
         if: contains(github.ref, 'developer')
         run: |
           echo "${{ secrets.YML_DEV }}" > ./src/main/resources/application-dev.yml
         shell: bash
 
-      # 7. 환경별 YML 파일 생성 - application-prod.yml
+      # 7. 환경별 application-prod.yml 생성 (main 브랜치)
       - name: Create application-prod.yml
         if: contains(github.ref, 'main')
         run: |
@@ -77,47 +76,64 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 11. Docker 빌드 & 푸시 (프로덕션)
+      # 10. Docker 이미지 빌드 & 푸시 (프로덕션 - main 브랜치)
       - name: Docker build & push to prod
         if: contains(github.ref, 'main')
         run: |
+          # 빌드 컨텍스트는 planit 폴더로 지정 (Dockerfile-prod은 planit 폴더 안에 위치)
           docker build -f planit/Dockerfile-prod -t ${{ secrets.DOCKER_USERNAME }}/docker-test-prod planit
           docker push ${{ secrets.DOCKER_USERNAME }}/docker-test-prod
 
-      # 12. Docker 빌드 & 푸시 (개발)
+      # 11. Docker 이미지 빌드 & 푸시 (개발 - developer 브랜치)
       - name: Docker build & push to dev
         if: contains(github.ref, 'developer')
         run: |
-          # 중요: 마지막 인자로 '.'이 아닌 'planit' 폴더를 명시
+          # 빌드 컨텍스트는 planit 폴더로 지정 (Dockerfile-dev은 planit 폴더 안에 위치)
           docker build -f planit/Dockerfile-dev -t ${{ secrets.DOCKER_USERNAME }}/docker-test-dev planit
           docker push ${{ secrets.DOCKER_USERNAME }}/docker-test-dev
 
-      # 13. 프로덕션 배포
+      # 12. 프로덕션 배포 (main 브랜치)
       - name: Deploy to prod
-        uses: appleboy/ssh-action@master
         if: contains(github.ref, 'main')
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST_PROD }}
           username: ubuntu
           key: ${{ secrets.PRIVATE_KEY }}
           envs: GITHUB_SHA
           script: |
-            sudo docker ps
+            echo "Pulling and running production container..."
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/docker-test-prod
-            sudo docker run -d -p 8082:8082 ${{ secrets.DOCKER_USERNAME }}/docker-test-prod
+            sudo docker run -d -p 8082:8082 \
+              -e SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }} \
+              -e SPRING_MAIL_PASSWORD=${{ secrets.SPRING_MAIL_PASSWORD }} \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
+              -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+              -e AWS_REGION=${{ secrets.AWS_REGION }} \
+              -e AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }} \
+              ${{ secrets.DOCKER_USERNAME }}/docker-test-prod
             sudo docker image prune -f
 
-      # 14. 개발 환경 배포
+      # 13. 개발 환경 배포 (developer 브랜치)
       - name: Deploy to dev
-        uses: appleboy/ssh-action@master
         if: contains(github.ref, 'developer')
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST_DEV }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.PRIVATE_KEY }}
           port: 22
           script: |
-            sudo docker ps
+            echo "Pulling and running development container..."
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/docker-test-dev
-            sudo docker run -d -p 8081:8081 ${{ secrets.DOCKER_USERNAME }}/docker-test-dev
+            sudo docker run -d -p 8081:8081 \
+              -e SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }} \
+              -e SPRING_MAIL_PASSWORD=${{ secrets.SPRING_MAIL_PASSWORD }} \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
+              -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+              -e AWS_REGION=${{ secrets.AWS_REGION }} \
+              -e AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }} \
+              ${{ secrets.DOCKER_USERNAME }}/docker-test-dev
             sudo docker image prune -f
