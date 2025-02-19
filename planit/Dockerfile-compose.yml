@@ -1,7 +1,7 @@
-version: "2.20"
+version: "3.9"
 services:
   planit:
-    image: planit2025/docker-test-dev
+    image: planit2025/docker-test-dev:latest
     ports:
       - "9090:9090"
     env_file:
