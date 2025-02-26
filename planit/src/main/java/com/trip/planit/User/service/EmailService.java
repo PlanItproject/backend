@@ -56,7 +56,7 @@ public class EmailService {
                 .verificationCode(verificationCode)
                 .verifiedEmail(false)
                 .createTime(LocalDateTime.now())
-                .expirationTime(LocalDateTime.now().plusMinutes(3)) // 유효 코드 - 3분
+                .expirationTime(LocalDateTime.now().plusMinutes(10)) // 유효 시간 - 10분
                 .build();
 
         emailVerificationRepository.save(emailVerification);
@@ -64,14 +64,12 @@ public class EmailService {
 
     // 이전 인증 코드 무효화
     private void invalidateOldVerificationCodes(TemporaryUser temporaryUser) {
-        emailVerificationRepository.findTopByTemporaryUserAndVerifiedEmailFalseOrderByCreateTimeDesc(temporaryUser)
-                .ifPresent(verification -> {
-                    verification.setVerifiedEmail(true);
-                    emailVerificationRepository.save(verification);
+        emailVerificationRepository.findTopByTemporaryUserAndVerifiedEmailFalseOrderByCreateTimeDesc(temporaryUser) // 아직 인증이 완료되지 않은 특정 Temp 사용자
+                .ifPresent(verification -> {    // 인증코드를 매개변수로 받음
+                    verification.setVerifiedEmail(true);    // 무효화
+                    emailVerificationRepository.save(verification); // 저장
                 });
     }
-
-    // UserService.java
 
     // 임시 사용자에 저장 여부
     public boolean existsTemporaryUserByEmail(String email) {

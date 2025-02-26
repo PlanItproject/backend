@@ -6,7 +6,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class RegistrationResponse {
-    private boolean googleLogin;
-    private String token;
+@AllArgsConstructor
+public class UserProfileResponse {
+    private String profileImageUrl;
 }
