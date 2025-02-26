@@ -1,6 +1,8 @@
 package com.trip.planit.User.controller;
 
+import com.trip.planit.User.config.exception.InternalServerErrorException;
 import com.trip.planit.User.dto.RegistrationResponse;
+import com.trip.planit.User.dto.UserProfileResponse;
 import com.trip.planit.User.dto.UserRequest;
 import com.trip.planit.User.dto.UserResponse;
 import com.trip.planit.User.security.JwtUtil;
@@ -22,7 +24,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.multipart.MultipartFile;
 
 
-@Tag(name = "User Controller(유저 API)")
+@Tag(name = "User")
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -99,7 +101,7 @@ public class UserController {
         } catch (Exception e) {
             // 예외 발생 시 임시 사용자 삭제
             userService.deleteTemporaryUsers();
-            throw e;
+            throw new InternalServerErrorException("An unexpected error occurred while verifying the email.");
         }
     }
 
@@ -123,7 +125,7 @@ public class UserController {
     @PostMapping("/register/final")
     @Operation(summary = "회원가입 3단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
     public RegistrationResponse completeRegistration(
-            @RequestParam(required = false) String email, // 일반 회원가입만 입력 필요
+            @RequestParam String email,
             @RequestParam String nickname,
             @RequestParam MBTI mbti,
             @RequestParam Gender gender,
@@ -210,7 +212,7 @@ public class UserController {
     }
 
     // 프로필 사진 수정
-    @PutMapping("/profile/image")
+    @PutMapping("/profile/change")
     @Operation(summary = "프로필 사진 수정", description = "기존 프로필 사진을 새로운 이미지로 교체")
     public ResponseEntity<String> updateProfileImage(
             @RequestParam(required = false) MultipartFile profileImage
@@ -224,14 +226,22 @@ public class UserController {
         return ResponseEntity.ok("Profile image updated successfully.");
     }
 
+    // 프로필 조회 API
+    @GetMapping("/profile/read")
+    @Operation(summary = "프로필 조회", description = "현재 로그인한 사용자의 프로필 정보를 반환")
+    public ResponseEntity<UserProfileResponse> getProfile() {
+        Long userId = getAuthenticatedUserId();
+        UserProfileResponse profile = userService.getUserProfile(userId);
+        return ResponseEntity.ok(profile);
+    }
 
     // 회원탈퇴
     @DeleteMapping("/profile/delete")
-    @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자의 계정을 삭제")
+    @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자의 계정을 삭제 - 비활성화")
     public ResponseEntity<String> deleteUser() {
         try {
             Long userId = getAuthenticatedUserId(); // 현재 로그인한 사용자 ID 가져오기
-            userService.deleteUserAndRelatedData(userId);
+            userService.deactivate(userId);
             return ResponseEntity.ok("User deleted successfully.");
         } catch (Exception e) {
             throw new BadRequestException("An error occurred while deleting the user.");

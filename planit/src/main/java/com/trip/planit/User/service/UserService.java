@@ -3,20 +3,24 @@ package com.trip.planit.User.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.trip.planit.User.config.exception.BadRequestException;
+import com.trip.planit.User.dto.UserProfileResponse;
 import com.trip.planit.User.dto.UserResponse;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -87,6 +91,18 @@ public class UserService {
         userRepository.save(user);
     }
 
+    // 이미지 조회
+    @Transactional(readOnly = true)
+    public UserProfileResponse getUserProfile(Long userId) {
+        // DB에서 사용자 조회 (없으면 예외 발생)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        // UserProfileResponse DTO에 사용자 정보 매핑
+        return new UserProfileResponse(
+                user.getProfile() // S3에 업로드된 프로필 이미지 URL
+        );
+    }
 
     // 회원가입 1단계 - 임시 회원으로 저장
     public void saveTemporaryUser(String email, String password, Platform platform) {
@@ -158,17 +174,24 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteUserAndRelatedData(Long userId) {
+    public void deactivate(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BadRequestException("User not found."));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        // 이메일 인증 기록 삭제
-        emailVerificationRepository.deleteByTemporaryUser_Email(user.getEmail());
+        user.setActive(false);
 
-        // 임시 사용자 정보 삭제
-        temporaryUserRepository.deleteByEmail(user.getEmail());
+        // 예약 시각 : 현재 시간 + 3일 후
+        user.setDeletionScheduledAt(LocalDateTime.now().plusDays(3));
+    }
 
-        // 유저 삭제
-        userRepository.delete(user);
+
+    @Scheduled(cron = "0 0 * * * *")
+    @Transactional
+    public void deleteUsers() {
+        LocalDateTime now = LocalDateTime.now();
+        List<User> usersToDelete = userRepository.findByActiveFalseAndDeletionScheduledAtBefore(now);
+        if (!usersToDelete.isEmpty()) {
+            userRepository.deleteAll(usersToDelete);
+        }
     }
 }

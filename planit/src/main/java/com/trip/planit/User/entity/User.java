@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
+@Data
 @Table(name = "user", indexes = {
         @Index(name = "idx_email", columnList = "email")
 })
@@ -32,7 +33,7 @@ public class User {
     private String nickname;
 
     @Column(name = "profile")
-    private String profile;     // 수정 필요함.
+    private String profile;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "mbti", length = 20, nullable = false)
@@ -48,5 +49,10 @@ public class User {
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt; // 수정
+    private LocalDateTime createdAt;
+
+    @Column(name = "active", nullable = false)
+    private boolean active;
+
+    private LocalDateTime deletionScheduledAt; // 예약된 삭제 시각 저장.
 }
