@@ -66,3 +66,6 @@ aws:
     region: ${AWS_REGION}
     bucketName: ${AWS_S3_BUCKET_NAME}
 
+amadeus:
+  clientId: dsje7yv9MN7hxcYnHRymquJPZrAdkHyP
+  clientSecret: XB4GAENJV89oWea2
