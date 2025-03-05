@@ -72,6 +72,9 @@ dependencies {
 
 	// websocket
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+	// Amadeus Java API
+	implementation 'com.amadeus:amadeus-java:5.7.2'
 }
 
 tasks.named('test') {
