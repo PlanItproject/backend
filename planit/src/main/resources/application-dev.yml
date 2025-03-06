@@ -9,7 +9,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://docker-mysql-test.cl82gmc8wwsn.ap-southeast-2.rds.amazonaws.com:3306/planit
     username: user
-    password: planIt0331!
+    password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:
     properties:
