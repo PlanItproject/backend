@@ -1,125 +1,110 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>인증코드</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Montserrat:wght@100..900&family=Nanum+Gothic&display=swap" rel="stylesheet" />
-    <!--    <link rel="preconnect" href="https://fonts.googleapis.com" />-->
-<!--    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />-->
-<!--    <link-->
-<!--      href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nanum+Gothic&display=swap"-->
-<!--      rel="stylesheet"-->
-<!--    />-->
-
     <style>
-      @font-face {
-        font-family: "Pretendard";
-        src: url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/woff2/Pretendard-Medium.woff2") format("woff2");
-      }
-      /*@font-face {*/
-      /*  font-family: "Pretendard";*/
-      /*  src: url("./Pretendard-Medium.otf") format("opentype");*/
-      /*}*/
-      body {
-        width: 100%;
-        padding: 40px 0;
-        background-color: #fff;
-        font-family: "Pretendard", sans-serif;
-      }
-      .CodeConatiner {
-        width: 371px;
-        margin: 0 auto;
-        padding: 40px;
-        border-radius: 4px;
-        background-color: #f5f5f5;
-        text-align: center;
-      }
-      .title {
-        font-family: "Alfa Slab One", serif;
-        font-size: 16px;
-        font-style: normal;
-        font-weight: 400;
-        line-height: 160%;
-        color: #2988ff;
-        text-align: center;
-        margin-bottom: 20px;
-      }
-      .description {
-        font-size: 16px;
-        font-style: normal;
-        font-weight: 500;
-        line-height: 145%;
-        text-align: center;
-      }
-      .Code-box {
-        width: 330px;
-        height: auto;
-        padding: 20px;
-        margin: 48px auto;
-        background-color: #fff;
-        text-align: center;
-      }
-      .Code-box > p {
-        font-size: 20px;
-        font-style: normal;
-        font-weight: 600;
-        line-height: 145%;
-        color: #2988ff;
-      }
-      .bottom {
-        font-size: 16px;
-        font-style: normal;
-        font-weight: 500;
-        line-height: 145%;
-        text-align: center;
-      }
+      @import url("https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Montserrat:wght@400;600&display=swap");
     </style>
   </head>
-  <body>
+  <body
+    style="
+      width: 100%;
+      padding: 40px 0;
+      background-color: #fff;
+      text-align: center;
+    "
+  >
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
       <tr>
         <td align="center">
-          <table role="presentation" class="CodeConatiner">
+          <table
+            role="presentation"
+            width="371"
+            style="
+              margin: 0 auto;
+              padding: 40px;
+              border-radius: 4px;
+              background-color: #f5f5f5;
+            "
+          >
             <tr>
               <td align="center">
-                <p class="title">PlanIt</p>
+                <p
+                  style="
+                    font-size: 24px;
+                    font-weight: bolder;
+                    color: #2988ff;
+                    margin-bottom: 20px;
+                    font-family:
+                      &quot;Franklin Gothic Medium&quot;,
+                      &quot;Arial Narrow&quot;, Arial, serif;
+                  "
+                >
+                  PlanIt
+                </p>
               </td>
             </tr>
             <tr>
               <td align="center">
-                <p class="description">
-                  플래닛 본인확인을 위한 코드입니다. <br />
+                <p
+                  style="
+                    font-size: 16px;
+                    font-weight: 600;
+                    line-height: 145%;
+                    margin: 0;
+                  "
+                >
+                  플래닛 본인확인을 위한 코드입니다.<br />
                   아래의 인증 코드를 입력해주세요.
                 </p>
               </td>
             </tr>
             <tr>
               <td align="center">
-                <!-- ✅ 기존 div → 테이블로 변경 (이메일 클라이언트 호환성 문제 해결) -->
-                <table class="Code-box" role="presentation" style="width: 330px; padding: 20px; background-color: #fff; text-align: center;">
+                <table
+                  role="presentation"
+                  width="330"
+                  style="
+                    padding: 20px;
+                    margin: 48px auto;
+                    background-color: #fff;
+                  "
+                >
                   <tr>
                     <td align="center">
-                      <!-- ✅ th:text 제거 후, ${verificationCode}로 변경하여 동적 값 주입 -->
-                      <p class="code-box" th:text="${verificationCode}">0000</p>
+                      <p
+                        style="
+                          font-size: 20px;
+                          font-weight: 600;
+                          color: #2988ff;
+                          margin: 0;
+                          font-family:
+                            &quot;Franklin Gothic Medium&quot;,
+                            &quot;Arial Narrow&quot;, Arial, serif;
+                        "
+                        th:text="${verificationCode}"
+                      >
+                        0000
+                      </p>
                     </td>
                   </tr>
                 </table>
               </td>
             </tr>
             <tr>
-<!--              <td align="center">-->
-<!--                <div class="Code-box">-->
-<!--                    <p class="code-box" th:text="${verificationCode}">000000</p>-->
-<!--                  &lt;!&ndash;                  <p>8888</p>&ndash;&gt;-->
-<!--                </div>-->
-<!--              </td>-->
-<!--            </tr>-->
-<!--            <tr>-->
               <td align="center">
-                <p class="bottom">인증 코드는 5분간 유효합니다.</p>
+                <p
+                  style="
+                    font-size: 14px;
+                    font-weight: 500;
+                    margin: 0;
+                    color: #666;
+                  "
+                >
+                  인증 코드는 5분간 유효합니다.
+                </p>
               </td>
             </tr>
           </table>
