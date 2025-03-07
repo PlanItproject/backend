@@ -4,11 +4,12 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.trip.planit.User.config.exception.BadRequestException;
 import com.trip.planit.User.dto.UserProfileResponse;
-import com.trip.planit.User.dto.UserResponse;
+import com.trip.planit.User.dto.LoginResponse;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.repository.UserRepository;
+import jakarta.annotation.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -44,8 +45,8 @@ public class UserService {
     }
 
     // 로그인 - response 값
-    public UserResponse loginResponse(User user, String token) {
-        return UserResponse.builder()
+    public LoginResponse loginResponse(User user, String token) {
+        return LoginResponse.builder()
                 .token(token)
                 .nickname(user.getNickname())
                 .mbti(user.getMbti())
@@ -106,38 +107,35 @@ public class UserService {
 
     // 회원가입 1단계 - 임시 회원으로 저장
     public void saveTemporaryUser(String email, String password, Platform platform) {
-        TemporaryUser temporaryUser = TemporaryUser.builder()
+
+        TemporaryUser.TemporaryUserBuilder builder = TemporaryUser.builder()
                 .email(email)
-                .password(passwordEncoder.encode(password))
-                .platform(platform)
-                .build();
+                .platform(platform);
+
+        // 일반 회원가입인 경우 비밀번호 암호화 후 저장
+        if (password != null && !password.isBlank()) {
+            builder.password(passwordEncoder.encode(password));
+        }
+
+        TemporaryUser temporaryUser = builder.build();
         temporaryUserRepository.save(temporaryUser);
     }
+
 
     // 회원가입 3단계 - 닉네임, MBTI, 성별 입력 및 최종 회원가입 자동 완료
     @Transactional
     public void completeFinalRegistration(String email, String nickname, MBTI mbti, Gender gender, String profile) {
-        TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
+        // 임시 사용자가 존재하는지 확인만 함 (추가 정보는 바로 최종 등록에 사용)
+        temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
-        // 임시 사용자 정보 업데이트
-        tempUser.setNickname(nickname);
-        tempUser.setMbti(mbti);
-        tempUser.setGender(gender);
-
-        if (profile != null) {
-            tempUser.setProfile(profile);
-        }
-
-        temporaryUserRepository.save(tempUser);
-
         // 닉네임, MBTI, 성별 입력이 끝났다면 자동으로 최종 회원가입 처리
-        completeRegistration(email);
+        completeRegistration(email, nickname, mbti, gender, profile);
     }
 
     // 회원가입 - 최종 회원가입 완료
     @Transactional
-    public void completeRegistration(String email) {
+    public void completeRegistration(String email, String nickname, MBTI mbti, Gender gender, String profile) {
         TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
@@ -146,12 +144,12 @@ public class UserService {
 
         User user = User.builder()
                 .email(tempUser.getEmail())
-                .password(password) // Google 사용자는 null 저장
-                .nickname(tempUser.getNickname())
-                .mbti(tempUser.getMbti())
-                .gender(tempUser.getGender())
+                .password(password)
+                .nickname(nickname)
+                .mbti(mbti)
+                .gender(gender)
                 .platform(tempUser.getPlatform())
-                .profile(tempUser.getProfile())
+                .profile(profile)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -159,18 +157,20 @@ public class UserService {
 
         // 일반 회원가입 사용자의 경우, 이메일 인증 정보 삭제
         if (tempUser.getPlatform() == Platform.APP) {
-            emailVerificationRepository.deleteByTemporaryUserId(tempUser.getId());
+            emailVerificationRepository.deleteByTemporaryUserId_TemporaryUserId(tempUser.getTemporaryUserId());
         }
 
         // 임시 사용자 정보 삭제
         temporaryUserRepository.delete(tempUser);
     }
 
+//    public void deleteTemporaryUserByEmail(Long temporaryUserId) {
+//        emailVerificationRepository.deleteByTemporaryUserId(temporaryUserId);
+//        temporaryUserRepository.deleteByTemporaryUserId(temporaryUserId);
+//    }
 
-    // 회원가입 - 모든 임시 회원 정보 삭제
-    public void deleteTemporaryUsers() {
-        emailVerificationRepository.deleteAll();
-        temporaryUserRepository.deleteAll();
+    public void deleteTemporaryUserByEmail(String email) {
+        temporaryUserRepository.findByEmail(email);
     }
 
     @Transactional

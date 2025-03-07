@@ -20,8 +20,8 @@ public class EmailVerification {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "temporary_user_id", referencedColumnName = "id")
-    private TemporaryUser temporaryUser;
+    @JoinColumn(name = "temporary_user_id", referencedColumnName = "temporary_user_id")
+    private TemporaryUser temporaryUserId;
 
     @Column(nullable = false)
     private int verificationCode;

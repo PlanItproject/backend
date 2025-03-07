@@ -37,7 +37,7 @@ spring:
           writetimeout: 5000
 
 server:
-  ddress: 0.0.0.0
+  address: 0.0.0.0
   port: 9090
 
 jwt:
@@ -53,8 +53,10 @@ logging:
     org.springframework.web.servlet.DispatcherServlet: TRACE
 
 springdoc:
+  api-docs:
+    path: /v3/api-docs
   swagger-ui:
-    server-url: http://3.107.208.213:8080
+    path: /swagger-ui.html
 
 aws:
   s3:

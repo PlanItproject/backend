@@ -5,7 +5,8 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UserRequest {
+public class RegisterResponse {
     private String email;
-    private String password;
+    private boolean isGoogleLogin;
+
 }
