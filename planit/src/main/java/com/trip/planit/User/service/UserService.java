@@ -107,9 +107,6 @@ public class UserService {
 
     // 회원가입 1단계 - 임시 회원으로 저장
     public void saveTemporaryUser(String email, String password, Platform platform) {
-        if (temporaryUserRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists.");
-        }
 
         TemporaryUser.TemporaryUserBuilder builder = TemporaryUser.builder()
                 .email(email)
@@ -131,17 +128,6 @@ public class UserService {
         // 임시 사용자가 존재하는지 확인만 함 (추가 정보는 바로 최종 등록에 사용)
         temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
-
-//        // 임시 사용자 정보 업데이트
-//        tempUser.setNickname(nickname);
-//        tempUser.setMbti(mbti);
-//        tempUser.setGender(gender);
-//
-//        if (profile != null) {
-//            tempUser.setProfile(profile);
-//        }
-
-//        temporaryUserRepository.save(tempUser);
 
         // 닉네임, MBTI, 성별 입력이 끝났다면 자동으로 최종 회원가입 처리
         completeRegistration(email, nickname, mbti, gender, profile);

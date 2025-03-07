@@ -4,6 +4,7 @@ import com.trip.planit.User.entity.EmailVerification;
 import com.trip.planit.User.entity.TemporaryUser;
 import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
+import com.trip.planit.User.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,21 +32,30 @@ public class EmailService {
     private final TemporaryUserRepository temporaryUserRepository;
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
     private final TemplateEngine templateEngine;
+    private final UserRepository userRepository;
 
     @Autowired
     public EmailService(JavaMailSender javaMailSender,
                         EmailVerificationRepository emailVerificationRepository,
-                        TemporaryUserRepository temporaryUserRepository, TemplateEngine templateEngine) {
+                        TemporaryUserRepository temporaryUserRepository, TemplateEngine templateEngine, UserRepository userRepository) {
         this.javaMailSender = javaMailSender;
         this.emailVerificationRepository = emailVerificationRepository;
         this.temporaryUserRepository = temporaryUserRepository;
         this.templateEngine = templateEngine;
+        this.userRepository = userRepository;
     }
 
     @Transactional
     public void sendVerificationEmail(String email) {
+
         TemporaryUser temporaryUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
+
+        // 해당 이메일로 User가 이미 존재할 경우.
+        boolean userExists = userRepository.existsByEmail(temporaryUser.getEmail());
+        if (userExists) {
+            throw new IllegalArgumentException("The user is already registered.");
+        }
 
         invalidateOldVerificationCodes(temporaryUser);
 

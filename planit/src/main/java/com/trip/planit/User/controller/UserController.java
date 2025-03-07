@@ -251,5 +251,4 @@ public class UserController {
             throw new BadRequestException("An error occurred while deleting the user.");
         }
     }
-
 }
