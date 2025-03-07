@@ -52,7 +52,7 @@ public class EmailService {
         sendEmail(email, "Your code is: " + verificationCode);
 
         EmailVerification emailVerification = EmailVerification.builder()
-                .temporaryUser(temporaryUser)
+                .temporaryUserId(temporaryUser)
                 .verificationCode(verificationCode)
                 .verifiedEmail(false)
                 .createTime(LocalDateTime.now())
@@ -64,7 +64,7 @@ public class EmailService {
 
     // 이전 인증 코드 무효화
     private void invalidateOldVerificationCodes(TemporaryUser temporaryUser) {
-        emailVerificationRepository.findTopByTemporaryUserAndVerifiedEmailFalseOrderByCreateTimeDesc(temporaryUser) // 아직 인증이 완료되지 않은 특정 Temp 사용자
+        emailVerificationRepository.findTopByTemporaryUserIdAndVerifiedEmailFalseOrderByCreateTimeDesc(temporaryUser) // 아직 인증이 완료되지 않은 특정 Temp 사용자
                 .ifPresent(verification -> {    // 인증코드를 매개변수로 받음
                     verification.setVerifiedEmail(true);    // 무효화
                     emailVerificationRepository.save(verification); // 저장
@@ -82,7 +82,7 @@ public class EmailService {
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
         Optional<EmailVerification> verificationOpt =
-                emailVerificationRepository.findTopByTemporaryUserAndVerifiedEmailFalseOrderByCreateTimeDesc(temporaryUser);
+                emailVerificationRepository.findTopByTemporaryUserIdAndVerifiedEmailFalseOrderByCreateTimeDesc(temporaryUser);
 
         if (verificationOpt.isPresent()) {
             EmailVerification verification = verificationOpt.get();

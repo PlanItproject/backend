@@ -7,11 +7,9 @@ import com.trip.planit.User.entity.Platform;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.sql.Timestamp;
-
 @Getter
 @Builder
-public class UserResponse {
+public class LoginResponse {
     private String token;
     private String nickname;
     private String email;

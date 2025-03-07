@@ -1,19 +1,22 @@
 package com.trip.planit.User.controller;
 
 import com.trip.planit.User.config.exception.InternalServerErrorException;
-import com.trip.planit.User.dto.RegistrationResponse;
-import com.trip.planit.User.dto.UserProfileResponse;
-import com.trip.planit.User.dto.UserRequest;
-import com.trip.planit.User.dto.UserResponse;
+import com.trip.planit.User.dto.*;
+import com.trip.planit.User.repository.EmailVerificationRepository;
+import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.security.JwtUtil;
 import com.trip.planit.User.service.EmailService;
 import com.trip.planit.User.service.UserService;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.config.exception.BadRequestException;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -23,37 +26,55 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 
 @Tag(name = "User")
 @RestController
 @RequestMapping("/users")
-@RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
     private final EmailService emailService;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final TemporaryUserRepository temporaryUserRepository;
+
+    @Autowired
+    public UserController(UserService userService, EmailService emailService,
+                          JwtUtil jwtUtil, PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository) {
+        this.userService = userService;
+        this.emailService = emailService;
+        this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
+        this.temporaryUserRepository = temporaryUserRepository;
+    }
+
 
     // 회원가입 API - 1단계
     @PostMapping("/register")
     @Operation(summary = "회원가입 1단계", description = "회원가입 정보를 입력하고 이메일 인증 요청")
-    public RegistrationResponse registerUser(@RequestParam(required = false) String email,
-                                               @RequestParam(required = false) String password,
-                                               @RequestParam Boolean isGoogleLogin) {
-       // 일반 -> platform = APP 자동 설정
+    public RegistrationResponse registerUser(@RequestBody RegisterRequest request) {
+
+        // 일반 -> platform = APP 자동 설정
         Platform platform = Platform.APP;
 
-        if (Boolean.TRUE.equals(isGoogleLogin)) {
+        String email = request.getEmail();
+
+        if (Boolean.TRUE.equals(request.isGoogleLogin())) {
             platform = Platform.GOOGLE;
 
             // OAuth2 인증이 완료된 상태에서 SecurityContext에서 이메일 정보를 가져옴
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (!(auth.getPrincipal() instanceof OAuth2User oauth2User)) {
-                throw new BadRequestException("OAuth2 authentication information could not be found.");
+
+            if (auth == null || !auth.isAuthenticated() || !(auth.getPrincipal() instanceof OAuth2User oauth2User)) {
+                throw new BadRequestException("Invalid OAuth2 authentication.");
             }
 
-            email = (String) oauth2User.getAttributes().get("email");
+            request.setEmail((String) oauth2User.getAttributes().get("email"));
+            email = request.getEmail();
 
             if (email == null || email.isBlank()) {
                 throw new BadRequestException("Google account email could not be found.");
@@ -69,13 +90,14 @@ public class UserController {
                     .token(token)
                     .build();
         } else {
-
             if (email == null || email.isBlank()) {
-                throw new BadRequestException("Email is required.");
+                throw new BadRequestException("Email could not be found.");
             }
 
+            String password = request.getPassword();
+
             if (password == null || password.isBlank()) {
-                throw new BadRequestException("Password is required.");
+                throw new BadRequestException("Password could not be found.");
             }
 
             userService.saveTemporaryUser(email, password, platform);
@@ -92,15 +114,20 @@ public class UserController {
     @PostMapping("/email/verify")
     @Operation(summary = "회원가입 2단계 - 이메일 인증", description = "인증 코드 검증 및 회원가입 승인")
     public ResponseEntity<String> verifyEmail(@RequestParam String email, @RequestParam int verificationCode) {
+        if (!emailService.verifyEmailCode(email, verificationCode)) {
+            throw new BadRequestException("Invalid verification code.");
+        }
+
+        // 이메일 인증 완료 후 temporary_user의 created_at 필드 업데이트
+        TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("Temporary user not found."));
+        tempUser.setCreatedAt(LocalDateTime.now());
+        temporaryUserRepository.save(tempUser);
+
         try {
-            if (emailService.verifyEmailCode(email, verificationCode)) {
-                return ResponseEntity.ok("Email verification completed. Please enter additional information (nickname, MBTI, gender).");
-            } else {
-                throw new BadRequestException("Invalid verification code.");
-            }
-        } catch (Exception e) {
-            // 예외 발생 시 임시 사용자 삭제
-            userService.deleteTemporaryUsers();
+            return ResponseEntity.ok("Email verification completed. Please enter additional information (nickname, MBTI, gender).");
+        } catch (RuntimeException e) {
+            temporaryUserRepository.deleteByTemporaryUserId(tempUser.getTemporaryUserId());
             throw new InternalServerErrorException("An unexpected error occurred while verifying the email.");
         }
     }
@@ -112,65 +139,43 @@ public class UserController {
 
         // 임시 사용자 존재 여부 확인
         if (!emailService.existsTemporaryUserByEmail(email)) {
-            throw new BadRequestException("No temporary user found for this email, or user is already registered.");
+            throw new BadRequestException("No temporary user found for email: " + email + ", or user is already registered.");
         }
 
-        // 이메일 인증 코드 재전송
-        emailService.sendVerificationCode(email);
+        try {
+            emailService.sendVerificationCode(email);
+            return ResponseEntity.ok("Verification code has been resent.");
+        } catch (Exception e) {
+            throw new InternalServerErrorException("Failed to resend verification code. Please try again later.");
+        }
 
-        return ResponseEntity.ok("Verification code has been resent.");
     }
 
     // 회원가입 API - 3단계 (닉네임, MBTI, 성별 입력 + 프로필 사진 업로드 후 최종 회원가입 완료)
-    @PostMapping("/register/final")
+    @PostMapping(value = "/register/final", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "회원가입 3단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
     public RegistrationResponse completeRegistration(
-            @RequestParam String email,
-            @RequestParam String nickname,
-            @RequestParam MBTI mbti,
-            @RequestParam Gender gender,
-            @RequestParam(required = false) MultipartFile profile,
-            HttpServletRequest request) {
+            @Parameter(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE))
+            @RequestPart(value="data") RegisterFinalRequest request,
+            @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
+            @RequestPart(value = "profile") MultipartFile profile) {
 
-        // 구글 로그인 사용자의 경우, JWT 토큰이 Authorization 헤더에 포함되어 있음
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            // jwtUtil.extractEmail() 메서드가 토큰에서 이메일을 추출한다고 가정
-            String tokenEmail = jwtUtil.extractemail(token);
+        String profileImageUrl = Optional.ofNullable(profile)
+                .filter(p -> !p.isEmpty())
+                .map(userService::uploadProfileImage)
+                .orElse(null);
 
-            // 만약 파라미터로 email이 넘어오지 않았다면 토큰에서 추출한 이메일을 사용
-            if (email == null || email.isBlank()) {
-                email = tokenEmail;
-            }
-        }
-
-        // 이메일이 여전히 null 또는 비어있으면 예외 발생 (일반 회원가입의 경우)
-        if (email == null || email.isBlank()) {
-            throw new BadRequestException("Email information is required to complete the final registration.");
-        }
-
-        // 프로필 이미지가 첨부된 경우 파일 업로드 처리 후 URL을 받아옴
-        String profileImageUrl = null;
-        if (profile != null && !profile.isEmpty()) {
-            profileImageUrl = userService.uploadProfileImage(profile);
-        }
-
-        // 최종 회원가입 처리 (S3 업로드된 URL을 전달)
-        userService.completeFinalRegistration(email, nickname, mbti, gender, profileImageUrl);
-
-        String finalToken = jwtUtil.generateToken(email);
-
+        userService.completeFinalRegistration(request.getEmail(), request.getNickname(), request.getMbti(), request.getGender(), profileImageUrl);
+        String token = jwtUtil.generateToken(request.getEmail());
         return RegistrationResponse.builder()
-                .token(finalToken)
+                .token(token)
                 .build();
     }
-
 
     // 일반 로그인
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "일반 로그인")
-    public UserResponse login(@RequestBody UserRequest request) {
+    public LoginResponse login(@RequestBody LoginRequest request) {
         try {
 
             // 이메일로 사용자 조회
@@ -188,7 +193,7 @@ public class UserController {
             }
         } catch (Exception e) {
             // 실패 시 - null
-            return UserResponse.builder()
+            return LoginResponse.builder()
                     .token(null)
                     .nickname(null)
                     .email(null)
@@ -206,7 +211,7 @@ public class UserController {
 
         if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
             String email = ((UserDetails) authentication.getPrincipal()).getUsername(); // 현재 로그인한 사용자의 이메일 가져오기
-            return userService.getUserByEmail(email).getUser_id(); // 이메일로 User 조회 후 user_id 반환
+            return userService.getUserByEmail(email).getUserId(); // 이메일로 User 조회 후 user_id 반환
         }
         throw new BadRequestException("User is not authenticated.");
     }
