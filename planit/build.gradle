@@ -75,6 +75,9 @@ dependencies {
 
 	// Amadeus Java API
 	implementation 'com.amadeus:amadeus-java:5.7.2'
+
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
 }
 
 tasks.named('test') {

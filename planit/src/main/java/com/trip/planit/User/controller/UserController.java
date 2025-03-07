@@ -101,12 +101,11 @@ public class UserController {
             }
 
             userService.saveTemporaryUser(email, password, platform);
-            emailService.sendVerificationCode(email);
+            emailService.sendVerificationEmail(email);
 
             return RegistrationResponse.builder()
                     .googleLogin(false)
                     .build();
-
         }
     }
 
@@ -143,7 +142,7 @@ public class UserController {
         }
 
         try {
-            emailService.sendVerificationCode(email);
+            emailService.sendVerificationEmail(email);
             return ResponseEntity.ok("Verification code has been resent.");
         } catch (Exception e) {
             throw new InternalServerErrorException("Failed to resend verification code. Please try again later.");
