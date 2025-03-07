@@ -107,6 +107,10 @@ public class UserService {
 
     // 회원가입 1단계 - 임시 회원으로 저장
     public void saveTemporaryUser(String email, String password, Platform platform) {
+        if (temporaryUserRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already exists.");
+        }
+
         TemporaryUser.TemporaryUserBuilder builder = TemporaryUser.builder()
                 .email(email)
                 .platform(platform);
