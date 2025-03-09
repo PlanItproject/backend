@@ -57,5 +57,9 @@ public class User {
     @Column(name = "active", nullable = false)
     private boolean active;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "language", nullable = false)
+    private Language language;
+
     private LocalDateTime deletionScheduledAt; // 예약된 삭제 시각 저장.
 }

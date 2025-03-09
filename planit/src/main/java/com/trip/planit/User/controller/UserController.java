@@ -4,6 +4,7 @@ import com.trip.planit.User.config.exception.InternalServerErrorException;
 import com.trip.planit.User.dto.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
+import com.trip.planit.User.security.JwtService;
 import com.trip.planit.User.security.JwtUtil;
 import com.trip.planit.User.service.EmailService;
 import com.trip.planit.User.service.UserService;
@@ -11,9 +12,12 @@ import com.trip.planit.User.entity.*;
 import com.trip.planit.User.config.exception.BadRequestException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -41,22 +45,43 @@ public class UserController {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final TemporaryUserRepository temporaryUserRepository;
+    private final JwtService jwtService;
+    private final EmailVerificationRepository emailVerificationRepository;
 
     @Autowired
     public UserController(UserService userService, EmailService emailService,
-                          JwtUtil jwtUtil, PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository) {
+                          JwtUtil jwtUtil, PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository
+    , JwtService jwtService, EmailVerificationRepository emailVerificationRepository) {
         this.userService = userService;
         this.emailService = emailService;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
         this.temporaryUserRepository = temporaryUserRepository;
+        this.jwtService = jwtService;
+        this.emailVerificationRepository = emailVerificationRepository;
     }
 
+    @PostMapping("/language")
+    @Operation(summary = "언어 설정", description = "사용자가 선택한 언어를 쿠키에 저장")
+    public ResponseEntity<String> setLanguage(@RequestParam("language") String language, HttpServletResponse response) {
+
+        // 쿠키 생성: 이름은 "lang", 값은 사용자가 선택한 언어 코드
+        Cookie languageCookie = new Cookie("language", language.toUpperCase());
+        languageCookie.setHttpOnly(true);
+        languageCookie.setPath("/");
+        // 필요에 따라 쿠키의 만료 시간, SameSite, Secure 옵션 추가
+        languageCookie.setMaxAge(7 * 24 * 60 * 60); // 예: 7일간 유지
+
+        response.addCookie(languageCookie);
+
+        return ResponseEntity.ok("Language cookie set to " + language.toUpperCase());
+    }
 
     // 회원가입 API - 1단계
     @PostMapping("/register")
-    @Operation(summary = "회원가입 1단계", description = "회원가입 정보를 입력하고 이메일 인증 요청")
-    public RegistrationResponse registerUser(@RequestBody RegisterRequest request) {
+    @Operation(summary = "회원가입 1단계", description = "회원가입 정보를 입력")
+    public RegistrationResponse registerUser(@RequestBody RegisterRequest request,
+                                             @CookieValue(value = "language", required = false) Language language, HttpServletResponse response) {
 
         // 일반 -> platform = APP 자동 설정
         Platform platform = Platform.APP;
@@ -81,13 +106,11 @@ public class UserController {
             }
 
             // Google 로그인 - OAuth에서 이메일 자동 적용
-            userService.saveTemporaryUser(email, null, platform);
-
-            String token = jwtUtil.generateToken(email);
+            userService.saveTemporaryUser(email, null, platform, language);
 
             return RegistrationResponse.builder()
                     .googleLogin(true)
-                    .token(token)
+                    .language(language)
                     .build();
         } else {
             if (email == null || email.isBlank()) {
@@ -100,38 +123,56 @@ public class UserController {
                 throw new BadRequestException("Password could not be found.");
             }
 
-            userService.saveTemporaryUser(email, password, platform);
-            emailService.sendVerificationEmail(email);
+            userService.saveTemporaryUser(email, password, platform, language);
 
             return RegistrationResponse.builder()
                     .googleLogin(false)
+                    .language(language)
                     .build();
         }
     }
 
-    // 회원가입 API - 2단계
-    @PostMapping("/email/verify")
-    @Operation(summary = "회원가입 2단계 - 이메일 인증", description = "인증 코드 검증 및 회원가입 승인")
-    public ResponseEntity<String> verifyEmail(@RequestParam String email, @RequestParam int verificationCode) {
-        if (!emailService.verifyEmailCode(email, verificationCode)) {
-            throw new BadRequestException("Invalid verification code.");
+    @PostMapping("/email/send")
+    @Operation(summary = "회원가입 - 2단계 이메일 전송", description = "이메일 전송하기")
+    public ResponseEntity<String> sendEmail(@RequestParam String email) {
+        if (!temporaryUserRepository.existsByEmail(email)) {
+            throw new BadRequestException("Email does not exist.");
         }
-
-        // 이메일 인증 완료 후 temporary_user의 created_at 필드 업데이트
-        TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
-                .orElseThrow(() -> new BadRequestException("Temporary user not found."));
-        tempUser.setCreatedAt(LocalDateTime.now());
-        temporaryUserRepository.save(tempUser);
-
-        try {
-            return ResponseEntity.ok("Email verification completed. Please enter additional information (nickname, MBTI, gender).");
-        } catch (RuntimeException e) {
-            temporaryUserRepository.deleteByTemporaryUserId(tempUser.getTemporaryUserId());
-            throw new InternalServerErrorException("An unexpected error occurred while verifying the email.");
-        }
+        emailService.sendVerificationEmail(email);
+        return ResponseEntity.ok("Send Email");
     }
 
-    // 이메일 인증코드 재전송
+    // 회원가입 API - 2단계
+    @PostMapping("/email/verify")
+    @Operation(summary = "회원가입 3단계 - 이메일 인증", description = "인증 코드 검증 및 회원가입 승인")
+    public ResponseEntity<String> verifyEmail(@RequestParam String email, @RequestParam int verificationCode) {
+        // TemporaryUser를 먼저 조회합니다.
+        TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("Temporary user not found."));
+
+        // 재시도 횟수가 5번 이상인 경우 예외 발생
+        if (tempUser.getFailedAttempts() >= 5) {
+            throw new BadRequestException("You have exceeded the maximum number of attempts. Please request a new verification code.");
+        }
+
+        // 인증 코드 검증
+        if (!emailService.verifyEmailCode(email, verificationCode)) {
+            // 인증 실패 시 재시도 횟수 증가
+            tempUser.setFailedAttempts(tempUser.getFailedAttempts() + 1);
+            temporaryUserRepository.save(tempUser);
+            throw new BadRequestException("Invalid verification code. Please click the resend button to try again.");
+        }
+
+        // 인증 성공: 실패 횟수 초기화 및 createdAt 업데이트
+        tempUser.setFailedAttempts(0);
+        tempUser.setCreatedAt(LocalDateTime.now());
+//        emailVerificationRepository.deleteByTemporaryUserId_Email(email);
+        temporaryUserRepository.save(tempUser);
+        return ResponseEntity.ok("Email verification completed. Please enter additional information (nickname, MBTI, gender).");
+    }
+
+
+    // 회원가입 중 - 이메일 인증코드 재전송
     @PostMapping("/email/resend")
     @Operation(summary = "이메일 인증 코드 재전송", description = "이미 등록한 이메일로 인증 코드를 재전송합니다.")
     public ResponseEntity<String> resendVerificationEmail(@RequestParam String email) {
@@ -152,12 +193,13 @@ public class UserController {
 
     // 회원가입 API - 3단계 (닉네임, MBTI, 성별 입력 + 프로필 사진 업로드 후 최종 회원가입 완료)
     @PostMapping(value = "/register/final", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "회원가입 3단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
+    @Operation(summary = "회원가입 4단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
     public RegistrationResponse completeRegistration(
             @Parameter(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE))
             @RequestPart(value="data") RegisterFinalRequest request,
             @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
-            @RequestPart(value = "profile") MultipartFile profile) {
+            @RequestPart(value = "profile") MultipartFile profile,
+            HttpServletResponse response) {
 
         String profileImageUrl = Optional.ofNullable(profile)
                 .filter(p -> !p.isEmpty())
@@ -165,35 +207,31 @@ public class UserController {
                 .orElse(null);
 
         userService.completeFinalRegistration(request.getEmail(), request.getNickname(), request.getMbti(), request.getGender(), profileImageUrl);
-        String token = jwtUtil.generateToken(request.getEmail());
+        jwtService.addAccessTokenCookie(response, request.getEmail());
         return RegistrationResponse.builder()
-                .token(token)
                 .build();
     }
 
     // 일반 로그인
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "일반 로그인")
-    public LoginResponse login(@RequestBody LoginRequest request) {
+    public LoginResponse login(@RequestBody LoginRequest request, HttpServletResponse response) {
         try {
-
             // 이메일로 사용자 조회
             User user = userService.getUserByEmail(request.getEmail());
 
             // 비밀번호 확인
             if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                // 토큰 생성
-                String token = jwtUtil.generateToken(user.getEmail());
-
-                // UserResponse 반환
-                return userService.loginResponse(user, token);
+                // JWT 토큰을 쿠키에 저장 (HttpServletResponse를 통해 Set-Cookie 헤더 설정)
+                jwtService.addAccessTokenCookie(response, user.getEmail());
+                // 토큰은 쿠키에 저장되므로, 응답 본문에는 사용자 정보만 담아 반환
+                return userService.loginResponse(user);
             } else {
                 throw new IllegalArgumentException("Invalid email or password.");
             }
         } catch (Exception e) {
-            // 실패 시 - null
+            // 로그인 실패 시, 필요한 경우 에러 메시지나 기본값을 담아 반환
             return LoginResponse.builder()
-                    .token(null)
                     .nickname(null)
                     .email(null)
                     .mbti(null)
@@ -219,33 +257,46 @@ public class UserController {
     @PutMapping("/profile/change")
     @Operation(summary = "프로필 사진 수정", description = "기존 프로필 사진을 새로운 이미지로 교체")
     public ResponseEntity<String> updateProfileImage(
-            @RequestParam(required = false) MultipartFile profileImage
+            @RequestParam("profileImage") MultipartFile newProfileImage
     ) {
         // 1) 로그인한 사용자 ID 가져오기
         Long userId = getAuthenticatedUserId();
 
-        // 2) Service 로직 호출: 프로필 사진만 변경
-        userService.updateUserProfileImage(userId, profileImage);
+        // 2) 기존 프로필 이미지 URL 조회 (DB에서 가져온다고 가정)
+        String existingProfileUrl = userService.getProfileImageUrl(userId);
+
+        // 3) 기존 이미지가 있다면 S3에서 삭제
+        if (existingProfileUrl != null && !existingProfileUrl.isEmpty()) {
+            userService.deleteFile(existingProfileUrl);
+        }
+
+        // 4) 새로운 프로필 이미지를 S3에 업로드
+        String newProfileUrl = userService.uploadProfileImage(newProfileImage);
+
+        // 5) 사용자 프로필 업데이트 (새로운 이미지 URL 적용)
+        userService.updateUserProfileImage(userId, newProfileUrl);
 
         return ResponseEntity.ok("Profile image updated successfully.");
     }
 
+
     // 프로필 조회 API
     @GetMapping("/profile/read")
     @Operation(summary = "프로필 조회", description = "현재 로그인한 사용자의 프로필 정보를 반환")
-    public ResponseEntity<UserProfileResponse> getProfile() {
+    public String getProfile() {
         Long userId = getAuthenticatedUserId();
-        UserProfileResponse profile = userService.getUserProfile(userId);
-        return ResponseEntity.ok(profile);
+
+        return userService.getProfileImageUrl(userId);
     }
 
     // 회원탈퇴
-    @DeleteMapping("/profile/delete")
+    @DeleteMapping("/user/delete")
     @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자의 계정을 삭제 - 비활성화")
-    public ResponseEntity<String> deleteUser() {
+    public ResponseEntity<String> deleteUser(HttpServletResponse response) {
         try {
             Long userId = getAuthenticatedUserId(); // 현재 로그인한 사용자 ID 가져오기
             userService.deactivate(userId);
+            jwtService.clearAccessTokenCookie(response);
             return ResponseEntity.ok("User deleted successfully.");
         } catch (Exception e) {
             throw new BadRequestException("An error occurred while deleting the user.");

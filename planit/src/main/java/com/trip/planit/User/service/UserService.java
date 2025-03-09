@@ -9,7 +9,6 @@ import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.repository.UserRepository;
-import jakarta.annotation.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -45,12 +44,13 @@ public class UserService {
     }
 
     // 로그인 - response 값
-    public LoginResponse loginResponse(User user, String token) {
+    public LoginResponse loginResponse(User user) {
         return LoginResponse.builder()
-                .token(token)
+                .email(user.getEmail())
                 .nickname(user.getNickname())
                 .mbti(user.getMbti())
                 .gender(user.getGender())
+                .platform(user.getPlatform())
                 .build();
     }
 
@@ -73,44 +73,57 @@ public class UserService {
         return amazonS3.getUrl(bucketName, key).toString();
     }
 
-    // 이미지 업데이트
-    @Transactional
-    public void updateUserProfileImage(Long userId, MultipartFile profileImage) {
-        // 1) DB에서 기존 사용자 조회
+    public void deleteFile(String fileUrl) {
+        String fileName = extractFileName(fileUrl);
+        amazonS3.deleteObject(bucketName, fileName);
+    }
+
+    private String extractFileName(String fileUrl) {
+        return fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
+    }
+
+
+//    // 이미지 업데이트
+//    @Transactional
+//    public void updateUserProfileImage(Long userId, MultipartFile profileImage) {
+//        // 1) DB에서 기존 사용자 조회
+//        User user = userRepository.findById(userId)
+//                .orElseThrow(() -> new BadRequestException("User not found"));
+//
+//        // 2) 프로필 이미지가 전달된 경우에만 업데이트
+//        if (profileImage != null && !profileImage.isEmpty()) {
+//            String profileUrl = uploadProfileImage(profileImage);
+//            user.setProfile(profileUrl);
+//        } else {
+//            throw new BadRequestException("Profile image file is missing.");
+//        }
+//
+//        // 3) 변경사항 DB 반영
+//        userRepository.save(user);
+//    }
+
+    public String getProfileImageUrl(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
-        // 2) 프로필 이미지가 전달된 경우에만 업데이트
-        if (profileImage != null && !profileImage.isEmpty()) {
-            String profileUrl = uploadProfileImage(profileImage);
-            user.setProfile(profileUrl);
-        } else {
-            throw new BadRequestException("Profile image file is missing.");
-        }
+        return user.getProfile(); // URL을 String으로 반환
+    }
 
-        // 3) 변경사항 DB 반영
+    // 업데이트
+    public void updateUserProfileImage(Long userId, String newProfileUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+        user.setProfile(newProfileUrl); // 엔티티에 setter가 있어야 합니다.
         userRepository.save(user);
     }
 
-    // 이미지 조회
-    @Transactional(readOnly = true)
-    public UserProfileResponse getUserProfile(Long userId) {
-        // DB에서 사용자 조회 (없으면 예외 발생)
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BadRequestException("User not found"));
-
-        // UserProfileResponse DTO에 사용자 정보 매핑
-        return new UserProfileResponse(
-                user.getProfile() // S3에 업로드된 프로필 이미지 URL
-        );
-    }
-
     // 회원가입 1단계 - 임시 회원으로 저장
-    public void saveTemporaryUser(String email, String password, Platform platform) {
+    public void saveTemporaryUser(String email, String password, Platform platform, Language language) {
 
         TemporaryUser.TemporaryUserBuilder builder = TemporaryUser.builder()
                 .email(email)
-                .platform(platform);
+                .platform(platform)
+                .language(language);
 
         // 일반 회원가입인 경우 비밀번호 암호화 후 저장
         if (password != null && !password.isBlank()) {
@@ -126,11 +139,17 @@ public class UserService {
     @Transactional
     public void completeFinalRegistration(String email, String nickname, MBTI mbti, Gender gender, String profile) {
         // 임시 사용자가 존재하는지 확인만 함 (추가 정보는 바로 최종 등록에 사용)
-        temporaryUserRepository.findByEmail(email)
+        TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
+
+
+        // email_verification 테이블에서 해당 임시 사용자와 관련된 모든 레코드를 먼저 삭제
+        emailVerificationRepository.deleteByTemporaryUserId_Email(email);
 
         // 닉네임, MBTI, 성별 입력이 끝났다면 자동으로 최종 회원가입 처리
         completeRegistration(email, nickname, mbti, gender, profile);
+
+        temporaryUserRepository.delete(tempUser);
     }
 
     // 회원가입 - 최종 회원가입 완료
@@ -151,6 +170,7 @@ public class UserService {
                 .platform(tempUser.getPlatform())
                 .profile(profile)
                 .createdAt(LocalDateTime.now())
+                .language(tempUser.getLanguage())
                 .build();
 
         userRepository.save(user);
@@ -164,15 +184,6 @@ public class UserService {
         temporaryUserRepository.delete(tempUser);
     }
 
-//    public void deleteTemporaryUserByEmail(Long temporaryUserId) {
-//        emailVerificationRepository.deleteByTemporaryUserId(temporaryUserId);
-//        temporaryUserRepository.deleteByTemporaryUserId(temporaryUserId);
-//    }
-
-    public void deleteTemporaryUserByEmail(String email) {
-        temporaryUserRepository.findByEmail(email);
-    }
-
     @Transactional
     public void deactivate(Long userId) {
         User user = userRepository.findById(userId)
@@ -180,8 +191,11 @@ public class UserService {
 
         user.setActive(false);
 
+        // test용 4시간 후로 설정.
+        user.setDeletionScheduledAt(LocalDateTime.now().plusHours(4));
+
         // 예약 시각 : 현재 시간 + 3일 후
-        user.setDeletionScheduledAt(LocalDateTime.now().plusDays(3));
+//        user.setDeletionScheduledAt(LocalDateTime.now().plusDays(3));
     }
 
 
@@ -191,6 +205,12 @@ public class UserService {
         LocalDateTime now = LocalDateTime.now();
         List<User> usersToDelete = userRepository.findByActiveFalseAndDeletionScheduledAtBefore(now);
         if (!usersToDelete.isEmpty()) {
+            for (User user : usersToDelete) {
+                String profileImageUrl = user.getProfile();
+                if (profileImageUrl != null && !profileImageUrl.trim().isEmpty()) {
+                    deleteFile(profileImageUrl);
+                }
+            }
             userRepository.deleteAll(usersToDelete);
         }
     }

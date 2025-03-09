@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -30,5 +31,17 @@ public class TemporaryUser {
     private Platform platform;
 
     private LocalDateTime createdAt;
+
+    // 이메일 인증 실패 횟수를 저장하는 필드 (기본값은 0)
+    @Column(nullable = false)
+    private int failedAttempts;
+
+    // 자식 EmailVerification과의 관계 설정
+    @OneToMany(mappedBy = "temporaryUserId", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<EmailVerification> emailVerifications;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "language", nullable = false)
+    private Language language;
 
 }
