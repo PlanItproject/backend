@@ -4,6 +4,7 @@ import com.trip.planit.User.config.exception.InternalServerErrorException;
 import com.trip.planit.User.dto.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
+import com.trip.planit.User.repository.UserRepository;
 import com.trip.planit.User.security.JwtService;
 import com.trip.planit.User.security.JwtUtil;
 import com.trip.planit.User.service.EmailService;
@@ -45,18 +46,22 @@ public class UserController {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final TemporaryUserRepository temporaryUserRepository;
+    private final UserRepository userRepository;
     private final JwtService jwtService;
 
     @Autowired
     public UserController(UserService userService, EmailService emailService,
                           PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository
-    , JwtService jwtService) {
+    , JwtService jwtService, UserRepository userRepository) {
         this.userService = userService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.temporaryUserRepository = temporaryUserRepository;
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
+
+    private static final int MAX_ATTEMPTS = 5;
 
     @PostMapping("/language")
     @Operation(summary = "언어 설정", description = "사용자가 선택한 언어를 쿠키에 저장")
@@ -134,12 +139,12 @@ public class UserController {
         if (!temporaryUserRepository.existsByEmail(email)) {
             throw new BadRequestException("Email does not exist.");
         }
-        emailService.sendVerificationEmail(email);
+        emailService.sendRegistrationVerificationEmail(email);
         return ResponseEntity.ok("Send Email");
     }
 
     // 회원가입 API - 3단계
-    @PostMapping("/email/verify")
+    @PostMapping("/register/email/verify")
     @Operation(summary = "회원가입 3단계 - 이메일 인증", description = "인증 코드 검증 및 회원가입 승인")
     public ResponseEntity<String> verifyEmail(@RequestParam String email, @RequestParam int verificationCode) {
 
@@ -147,8 +152,8 @@ public class UserController {
                 .orElseThrow(() -> new BadRequestException("Temporary user not found."));
 
         // 재시도 횟수가 5번 이상인 경우 예외 발생
-        if (tempUser.getFailedAttempts() >= 5) {
-            throw new BadRequestException("You have exceeded the maximum number of attempts. Please request a new verification code.");
+        if (tempUser.getFailedAttempts() >= MAX_ATTEMPTS) { // 분리된 메서드를 호출
+            emailService.checkFailedAttempts(tempUser.getFailedAttempts());
         }
 
         // 인증 코드 검증
@@ -167,7 +172,7 @@ public class UserController {
 
 
     // 회원가입 중 - 이메일 인증코드 재전송
-    @PostMapping("/email/resend")
+    @PostMapping("/register/email/resend")
     @Operation(summary = "이메일 인증 코드 재전송", description = "이미 등록한 이메일로 인증 코드를 재전송합니다.")
     public ResponseEntity<String> resendVerificationEmail(@RequestParam String email) {
 
@@ -177,12 +182,11 @@ public class UserController {
         }
 
         try {
-            emailService.sendVerificationEmail(email);
+            emailService.sendRegistrationVerificationEmail(email);
             return ResponseEntity.ok("Verification code has been resent.");
         } catch (Exception e) {
             throw new InternalServerErrorException("Failed to resend verification code. Please try again later.");
         }
-
     }
 
     // 회원가입 4단계
@@ -264,6 +268,68 @@ public class UserController {
 
         return ResponseEntity.ok("Language updated successfully");
     }
+
+    // 비밀번호 찾기 - 이메일 전송
+    @PostMapping("/find/email/send")
+    @Operation(summary = "비밀번호 찾기 - 이메일 인증 코드 전송", description = "user에서 비밀번호 변경")
+    public ResponseEntity<String> resendUserVerificationEmail(@RequestParam String email) {
+
+        if (!userService.existsByEmail(email)) {
+            throw new BadRequestException("No user found for email: " + email + ", or user is not registered.");
+        }
+
+        try {
+            emailService.sendPasswordResetVerificationEmail(email);
+            return ResponseEntity.ok("Verification code has been resent.");
+        } catch (Exception e) {
+            throw new InternalServerErrorException("Failed to resend verification code. Please try again later.");
+        }
+    }
+
+    // 비밀번호 찾기 - 이메일 인증
+    @PostMapping("/find/email/verify")
+    @Operation(summary = "마이페이지 - 비밀번호 찾기 이메일 인증", description = "비밀번호 변경을 위한 이메일 인증")
+    public ResponseEntity<String> verifyUserEmail(@RequestParam String email, @RequestParam int verificationCode) {
+
+        // 사용자(User) 조회
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found for email: " + email));
+
+        // 재시도 횟수 체크
+        emailService.checkFailedAttempts(user.getFailedAttempts());
+
+        // 인증 코드 검증 (비밀번호 찾기용)
+        if (!emailService.verifyPasswordResetEmailCode(email, verificationCode)) {
+            // 인증 실패 시 실패 횟수 증가 후 저장
+            user.setFailedAttempts(user.getFailedAttempts() + 1);
+            userRepository.save(user);
+            throw new BadRequestException("Invalid verification code. Please click the resend button to try again.");
+        }
+
+        // 인증 성공: 실패 횟수 초기화, 이메일 인증 여부 및 인증 시간 업데이트
+        user.setFailedAttempts(0);
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Email verification completed. You may now reset your password.");
+    }
+
+    // 비밀번호 찾기 - 비밀번호 재설정 (인증 완료 후)
+    @PostMapping("/find/password/reset")
+    @Operation(summary = "비밀번호 찾기 - 비밀번호 재설정", description = "이메일 인증 완료 후 새로운 비밀번호로 변경합니다.")
+    public ResponseEntity<String> resetPassword(@RequestParam String email, @RequestParam String newPassword) {
+        // 사용자(User) 조회
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found for email: " + email));
+
+        // 새로운 비밀번호 암호화 후 업데이트
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        user.setPassword(encodedPassword);
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Password reset successfully.");
+    }
+
 
     // 프로필 사진 수정
     @PutMapping(value= "/profile/change", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

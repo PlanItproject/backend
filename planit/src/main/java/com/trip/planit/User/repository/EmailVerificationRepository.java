@@ -3,6 +3,7 @@ package com.trip.planit.User.repository;
 import com.trip.planit.User.entity.EmailVerification;
 import com.trip.planit.User.entity.TemporaryUser;
 import com.trip.planit.User.entity.User;
+import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -22,4 +23,9 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
 
     // 이메일로 삭제
     void deleteByTemporaryUserId_Email(String email);
+
+    Optional<EmailVerification> findByUserEmail(@Param("email") String email);
+    Optional<EmailVerification> findByTemporaryUserId_Email(String email);
+
+
 }

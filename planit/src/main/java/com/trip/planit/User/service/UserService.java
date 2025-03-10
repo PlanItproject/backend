@@ -1,8 +1,12 @@
 package com.trip.planit.User.service;
 
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.trip.planit.User.config.exception.BadRequestException;
+import com.trip.planit.User.config.exception.CustomS3Exception;
 import com.trip.planit.User.dto.LoginResponse;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
@@ -72,16 +76,33 @@ public class UserService {
         return amazonS3.getUrl(bucketName, key).toString();
     }
 
+    // S3 삭제 메서드 예시
     public void deleteFile(String fileUrl) {
-        String fileName = extractFileName(fileUrl);
-        amazonS3.deleteObject(bucketName, fileName);
+        String key = extractFileName(fileUrl);  // S3 객체 key 추출
+        System.out.println("Deleting S3 object with key: " + key);  // 디버그 로그
+
+        try {
+            amazonS3.deleteObject(new DeleteObjectRequest(bucketName, key));
+        } catch (AmazonServiceException e) {
+            throw new CustomS3Exception("AmazonServiceException: " + e.getErrorMessage(), e);
+        } catch (SdkClientException e) {
+            throw new CustomS3Exception("SdkClientException: " + e.getMessage(), e);
+        }
     }
 
     private String extractFileName(String fileUrl) {
-        String bucketUrl = "https://planitbucket123.s3.amazonaws.com/";
-        return fileUrl.replace(bucketUrl, "");  // S3 키 추출 (경로 포함)
-    }
+        String httpsPrefix = "https://planitbucket123.s3.amazonaws.com/";
+        String s3Prefix = "s3://planitbucket123/";
 
+        if (fileUrl.startsWith(httpsPrefix)) {
+            return fileUrl.replace(httpsPrefix, "");
+        } else if (fileUrl.startsWith(s3Prefix)) {
+            return fileUrl.replace(s3Prefix, "");
+        }
+
+        // 접두어가 다르면 그대로 반환하거나, 추가 처리를 할 수 있음.
+        return fileUrl;
+    }
 
     public String getProfileImageUrl(Long userId) {
         User user = userRepository.findById(userId)
@@ -213,6 +234,11 @@ public class UserService {
 
         // 변경 사항 저장 (Transactional 어노테이션이 있으면 save() 호출 없이도 변경사항이 반영될 수 있음)
         userRepository.save(user);
+    }
+
+    // email로 사용자 찾기
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
 
 }
