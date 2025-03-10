@@ -26,6 +26,13 @@ public class EmailVerification {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private TemporaryUser temporaryUserId;
 
+
+    // 비밀번호 찾기 시 User와 연관 (OneToMany 관계)
+    @ManyToOne
+    @JoinColumn(name = "user_id", referencedColumnName = "user_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private User user;
+
     @Column(nullable = false)
     private int verificationCode;
 

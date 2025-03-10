@@ -61,5 +61,9 @@ public class User {
     @Column(name = "language", nullable = false)
     private Language language;
 
+    // 이메일 인증 실패 횟수를 저장하는 필드 (기본값은 0)
+    @Column(nullable = false)
+    private int failedAttempts;
+
     private LocalDateTime deletionScheduledAt; // 예약된 삭제 시각 저장.
 }

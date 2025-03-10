@@ -90,9 +90,6 @@ public class UserService {
         }
     }
 
-
-
-
     private String extractFileName(String fileUrl) {
         String httpsPrefix = "https://planitbucket123.s3.amazonaws.com/";
         String s3Prefix = "s3://planitbucket123/";
@@ -237,6 +234,11 @@ public class UserService {
 
         // 변경 사항 저장 (Transactional 어노테이션이 있으면 save() 호출 없이도 변경사항이 반영될 수 있음)
         userRepository.save(user);
+    }
+
+    // email로 사용자 찾기
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
 
 }
