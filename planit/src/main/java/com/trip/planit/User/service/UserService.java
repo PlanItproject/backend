@@ -78,7 +78,8 @@ public class UserService {
     }
 
     private String extractFileName(String fileUrl) {
-        return fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
+        String bucketUrl = "https://planitbucket123.s3.amazonaws.com/";
+        return fileUrl.replace(bucketUrl, "");  // S3 키 추출 (경로 포함)
     }
 
 
@@ -199,4 +200,19 @@ public class UserService {
             userRepository.deleteAll(usersToDelete);
         }
     }
+
+    // 언어 수정
+    @Transactional
+    public void updateUserLanguage(Long userId, Language language) {
+        // 사용자 ID로 사용자 엔티티 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        // 엔티티의 언어 설정 변경
+        user.setLanguage(language);
+
+        // 변경 사항 저장 (Transactional 어노테이션이 있으면 save() 호출 없이도 변경사항이 반영될 수 있음)
+        userRepository.save(user);
+    }
+
 }

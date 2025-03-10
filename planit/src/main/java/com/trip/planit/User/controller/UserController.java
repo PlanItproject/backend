@@ -19,6 +19,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.codec.language.bm.Lang;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -137,7 +138,7 @@ public class UserController {
         return ResponseEntity.ok("Send Email");
     }
 
-    // 회원가입 API - 2단계
+    // 회원가입 API - 3단계
     @PostMapping("/email/verify")
     @Operation(summary = "회원가입 3단계 - 이메일 인증", description = "인증 코드 검증 및 회원가입 승인")
     public ResponseEntity<String> verifyEmail(@RequestParam String email, @RequestParam int verificationCode) {
@@ -184,7 +185,7 @@ public class UserController {
 
     }
 
-    // 회원가입 API - 3단계 (닉네임, MBTI, 성별 입력 + 프로필 사진 업로드 후 최종 회원가입 완료)
+    // 회원가입 4단계
     @PostMapping(value = "/register/final", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "회원가입 4단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
     public RegistrationResponse completeRegistration(
@@ -246,11 +247,30 @@ public class UserController {
         throw new BadRequestException("User is not authenticated.");
     }
 
+    // 언어 변경
+    @PutMapping("language/change")
+    @Operation(summary = "언어 변경", description = "언어 변경")
+    public ResponseEntity<String> updateLanguage(@RequestParam Language language, HttpServletResponse response) {
+
+        Cookie languageCookie = new Cookie("language", language.name());
+        languageCookie.setPath("/");
+        languageCookie.setHttpOnly(true);
+        languageCookie.setMaxAge(7 * 24 * 60 * 60);
+
+        response.addCookie(languageCookie);
+
+        Long userId = getAuthenticatedUserId();
+        userService.updateUserLanguage(userId, language);
+
+        return ResponseEntity.ok("Language updated successfully");
+    }
+
     // 프로필 사진 수정
-    @PutMapping("/profile/change")
+    @PutMapping(value= "/profile/change", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "프로필 사진 수정", description = "기존 프로필 사진을 새로운 이미지로 교체")
     public ResponseEntity<String> updateProfileImage(
-            @RequestParam("profileImage") MultipartFile newProfileImage
+            @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
+            @RequestPart("newProfileImage") MultipartFile newProfileImage
     ) {
         Long userId = getAuthenticatedUserId();
 
@@ -268,6 +288,28 @@ public class UserController {
         userService.updateUserProfileImage(userId, newProfileUrl);
 
         return ResponseEntity.ok("Profile image updated successfully.");
+    }
+
+    // 프로필 삭제
+    @DeleteMapping("/profile/delete")
+    @Operation(summary = "프로필 사진 삭제", description = "현재 프로필 사진을 삭제")
+    public ResponseEntity<String> deleteProfileImage() {
+        Long userId = getAuthenticatedUserId();
+
+        // 현재 저장된 프로필 이미지 URL 가져오기
+        String existingProfileUrl = userService.getProfileImageUrl(userId);
+
+        if (existingProfileUrl == null || existingProfileUrl.isEmpty()) {
+            return ResponseEntity.badRequest().body("No profile image to delete.");
+        }
+
+        // S3에서 기존 프로필 이미지 삭제
+        userService.deleteFile(existingProfileUrl);
+
+        // 사용자 프로필 정보 업데이트 (프로필 이미지를 NULL로 설정)
+        userService.updateUserProfileImage(userId, null);
+
+        return ResponseEntity.ok("Profile image deleted successfully.");
     }
 
 
