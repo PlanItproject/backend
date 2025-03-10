@@ -2,6 +2,8 @@ package com.trip.planit.User.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -21,6 +23,7 @@ public class EmailVerification {
 
     @ManyToOne
     @JoinColumn(name = "temporary_user_id", referencedColumnName = "temporary_user_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private TemporaryUser temporaryUserId;
 
     @Column(nullable = false)
