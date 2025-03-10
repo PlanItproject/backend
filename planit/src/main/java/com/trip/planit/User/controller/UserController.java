@@ -42,34 +42,29 @@ public class UserController {
 
     private final UserService userService;
     private final EmailService emailService;
-    private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final TemporaryUserRepository temporaryUserRepository;
     private final JwtService jwtService;
-    private final EmailVerificationRepository emailVerificationRepository;
 
     @Autowired
     public UserController(UserService userService, EmailService emailService,
-                          JwtUtil jwtUtil, PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository
-    , JwtService jwtService, EmailVerificationRepository emailVerificationRepository) {
+                          PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository
+    , JwtService jwtService) {
         this.userService = userService;
         this.emailService = emailService;
-        this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
         this.temporaryUserRepository = temporaryUserRepository;
         this.jwtService = jwtService;
-        this.emailVerificationRepository = emailVerificationRepository;
     }
 
     @PostMapping("/language")
     @Operation(summary = "언어 설정", description = "사용자가 선택한 언어를 쿠키에 저장")
     public ResponseEntity<String> setLanguage(@RequestParam("language") String language, HttpServletResponse response) {
 
-        // 쿠키 생성: 이름은 "lang", 값은 사용자가 선택한 언어 코드
+        // 쿠키 생성: 이름은 "language", 값은 사용자가 선택한 언어 코드
         Cookie languageCookie = new Cookie("language", language.toUpperCase());
         languageCookie.setHttpOnly(true);
         languageCookie.setPath("/");
-        // 필요에 따라 쿠키의 만료 시간, SameSite, Secure 옵션 추가
         languageCookie.setMaxAge(7 * 24 * 60 * 60); // 예: 7일간 유지
 
         response.addCookie(languageCookie);
@@ -146,7 +141,7 @@ public class UserController {
     @PostMapping("/email/verify")
     @Operation(summary = "회원가입 3단계 - 이메일 인증", description = "인증 코드 검증 및 회원가입 승인")
     public ResponseEntity<String> verifyEmail(@RequestParam String email, @RequestParam int verificationCode) {
-        // TemporaryUser를 먼저 조회합니다.
+
         TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new BadRequestException("Temporary user not found."));
 
@@ -157,7 +152,6 @@ public class UserController {
 
         // 인증 코드 검증
         if (!emailService.verifyEmailCode(email, verificationCode)) {
-            // 인증 실패 시 재시도 횟수 증가
             tempUser.setFailedAttempts(tempUser.getFailedAttempts() + 1);
             temporaryUserRepository.save(tempUser);
             throw new BadRequestException("Invalid verification code. Please click the resend button to try again.");
@@ -166,7 +160,6 @@ public class UserController {
         // 인증 성공: 실패 횟수 초기화 및 createdAt 업데이트
         tempUser.setFailedAttempts(0);
         tempUser.setCreatedAt(LocalDateTime.now());
-//        emailVerificationRepository.deleteByTemporaryUserId_Email(email);
         temporaryUserRepository.save(tempUser);
         return ResponseEntity.ok("Email verification completed. Please enter additional information (nickname, MBTI, gender).");
     }
@@ -259,10 +252,8 @@ public class UserController {
     public ResponseEntity<String> updateProfileImage(
             @RequestParam("profileImage") MultipartFile newProfileImage
     ) {
-        // 1) 로그인한 사용자 ID 가져오기
         Long userId = getAuthenticatedUserId();
 
-        // 2) 기존 프로필 이미지 URL 조회 (DB에서 가져온다고 가정)
         String existingProfileUrl = userService.getProfileImageUrl(userId);
 
         // 3) 기존 이미지가 있다면 S3에서 삭제
@@ -273,7 +264,7 @@ public class UserController {
         // 4) 새로운 프로필 이미지를 S3에 업로드
         String newProfileUrl = userService.uploadProfileImage(newProfileImage);
 
-        // 5) 사용자 프로필 업데이트 (새로운 이미지 URL 적용)
+        // 5) 사용자 프로필 업데이트
         userService.updateUserProfileImage(userId, newProfileUrl);
 
         return ResponseEntity.ok("Profile image updated successfully.");

@@ -3,7 +3,6 @@ package com.trip.planit.User.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.trip.planit.User.config.exception.BadRequestException;
-import com.trip.planit.User.dto.UserProfileResponse;
 import com.trip.planit.User.dto.LoginResponse;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
@@ -83,37 +82,18 @@ public class UserService {
     }
 
 
-//    // 이미지 업데이트
-//    @Transactional
-//    public void updateUserProfileImage(Long userId, MultipartFile profileImage) {
-//        // 1) DB에서 기존 사용자 조회
-//        User user = userRepository.findById(userId)
-//                .orElseThrow(() -> new BadRequestException("User not found"));
-//
-//        // 2) 프로필 이미지가 전달된 경우에만 업데이트
-//        if (profileImage != null && !profileImage.isEmpty()) {
-//            String profileUrl = uploadProfileImage(profileImage);
-//            user.setProfile(profileUrl);
-//        } else {
-//            throw new BadRequestException("Profile image file is missing.");
-//        }
-//
-//        // 3) 변경사항 DB 반영
-//        userRepository.save(user);
-//    }
-
     public String getProfileImageUrl(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
-        return user.getProfile(); // URL을 String으로 반환
+        return user.getProfile();
     }
 
     // 업데이트
     public void updateUserProfileImage(Long userId, String newProfileUrl) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("User not found"));
-        user.setProfile(newProfileUrl); // 엔티티에 setter가 있어야 합니다.
+        user.setProfile(newProfileUrl);
         userRepository.save(user);
     }
 
@@ -138,7 +118,7 @@ public class UserService {
     // 회원가입 3단계 - 닉네임, MBTI, 성별 입력 및 최종 회원가입 자동 완료
     @Transactional
     public void completeFinalRegistration(String email, String nickname, MBTI mbti, Gender gender, String profile) {
-        // 임시 사용자가 존재하는지 확인만 함 (추가 정보는 바로 최종 등록에 사용)
+
         TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
@@ -191,15 +171,20 @@ public class UserService {
 
         user.setActive(false);
 
-        // test용 4시간 후로 설정.
-        user.setDeletionScheduledAt(LocalDateTime.now().plusHours(4));
+//        개발 test용 10분 후로 설정.
+        user.setDeletionScheduledAt(LocalDateTime.now().plusMinutes(10));
 
-        // 예약 시각 : 현재 시간 + 3일 후
+//        개발 test용 4시간 후로 설정.
+//        user.setDeletionScheduledAt(LocalDateTime.now().plusHours(4));
+
+//        예약 시각 : 현재 시간 + 3일 후
 //        user.setDeletionScheduledAt(LocalDateTime.now().plusDays(3));
     }
 
 
-    @Scheduled(cron = "0 0 * * * *")
+//  @Scheduled(cron = "0 0 * * * *")
+    // 개발 test용 오전 9시로 설정
+    @Scheduled(cron = "0 00 9 * * *")
     @Transactional
     public void deleteUsers() {
         LocalDateTime now = LocalDateTime.now();
