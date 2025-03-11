@@ -52,7 +52,7 @@ public class UserController {
     @Autowired
     public UserController(UserService userService, EmailService emailService,
                           PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository
-    , JwtService jwtService, UserRepository userRepository) {
+            , JwtService jwtService, UserRepository userRepository) {
         this.userService = userService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
@@ -194,7 +194,7 @@ public class UserController {
     @Operation(summary = "회원가입 4단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
     public RegistrationResponse completeRegistration(
             @Parameter(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE))
-            @RequestPart(value="data") RegisterFinalRequest request,
+            @RequestPart(value = "data") RegisterFinalRequest request,
             @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestPart(value = "profile") MultipartFile profile,
             HttpServletResponse response) {
@@ -332,7 +332,7 @@ public class UserController {
 
 
     // 프로필 사진 수정
-    @PutMapping(value= "/profile/change", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping(value = "/profile/change", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "프로필 사진 수정", description = "기존 프로필 사진을 새로운 이미지로 교체")
     public ResponseEntity<String> updateProfileImage(
             @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
@@ -391,12 +391,14 @@ public class UserController {
     // 회원탈퇴
     @DeleteMapping("/user/delete")
     @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자의 계정을 삭제 - 비활성화")
-    public ResponseEntity<String> deleteUser(HttpServletResponse response) {
+    public ResponseEntity<String> deleteUser(@RequestBody DeleteReqeust deleteReqeust, HttpServletResponse response) {
         try {
             Long userId = getAuthenticatedUserId(); // 현재 로그인한 사용자 ID 가져오기
-            userService.deactivate(userId);
+            userService.deactivate(userId, deleteReqeust);
             jwtService.clearAccessTokenCookie(response);
             return ResponseEntity.ok("User deleted successfully.");
+        } catch (BadRequestException e) {
+            throw e;
         } catch (Exception e) {
             throw new BadRequestException("An error occurred while deleting the user.");
         }

@@ -66,4 +66,12 @@ public class User {
     private int failedAttempts;
 
     private LocalDateTime deletionScheduledAt; // 예약된 삭제 시각 저장.
+
+    // 탈퇴 사유 1~4
+    @Column(name="deletereason")
+    private DeleteReason deleteReason;
+
+    // 탈퇴 사유 기타
+    @Column(name="deleteReason_Description")
+    private String deleteReason_Description;
 }
