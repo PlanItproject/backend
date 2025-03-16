@@ -7,6 +7,7 @@ import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.trip.planit.User.config.exception.BadRequestException;
 import com.trip.planit.User.config.exception.CustomS3Exception;
+import com.trip.planit.User.dto.DeleteReqeust;
 import com.trip.planit.User.dto.LoginResponse;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
@@ -187,11 +188,19 @@ public class UserService {
     }
 
     @Transactional
-    public void deactivate(Long userId) {
+    public void deactivate(Long userId, DeleteReqeust deleteReqeust) {
+        // "기타"를 선택한 경우 상세 사유 검증
+        if(deleteReqeust.getDeleteReason() == DeleteReason.OTHER &&
+                (deleteReqeust.getDeleteReason_Description() == null || deleteReqeust.getDeleteReason_Description().isEmpty())) {
+            throw new BadRequestException("Please provide a detailed reason when selecting 'Other' as the withdrawal reason.");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
+        user.setDeleteReason(deleteReqeust.getDeleteReason());
+        user.setDeleteReason_Description(deleteReqeust.getDeleteReason_Description());
         user.setActive(false);
+        userRepository.save(user);
 
 //        개발 test용 10분 후로 설정.
         user.setDeletionScheduledAt(LocalDateTime.now().plusMinutes(10));
