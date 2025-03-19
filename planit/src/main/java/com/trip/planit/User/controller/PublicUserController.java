@@ -2,25 +2,19 @@ package com.trip.planit.User.controller;
 
 import com.trip.planit.User.config.exception.InternalServerErrorException;
 import com.trip.planit.User.dto.*;
-import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.repository.UserRepository;
 import com.trip.planit.User.security.JwtService;
-import com.trip.planit.User.security.JwtUtil;
 import com.trip.planit.User.service.EmailService;
 import com.trip.planit.User.service.UserService;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.config.exception.BadRequestException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import org.apache.commons.codec.language.bm.Lang;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -33,14 +27,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 
-@Tag(name = "User")
+@Tag(name = "Public User")
 @RestController
-@RequestMapping("/users")
-public class UserController {
+@RequestMapping("/public/users")
+public class PublicUserController {
 
     private final UserService userService;
     private final EmailService emailService;
@@ -50,8 +43,8 @@ public class UserController {
     private final JwtService jwtService;
 
     @Autowired
-    public UserController(UserService userService, EmailService emailService,
-                          PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository
+    public PublicUserController(UserService userService, EmailService emailService,
+                                PasswordEncoder passwordEncoder, TemporaryUserRepository temporaryUserRepository
             , JwtService jwtService, UserRepository userRepository) {
         this.userService = userService;
         this.emailService = emailService;
@@ -80,7 +73,7 @@ public class UserController {
 
     // 회원가입 API - 1단계
     @PostMapping("/register")
-    @Operation(summary = "회원가입 1단계", description = "회원가입 정보를 입력")
+    @Operation(summary = "회원가입 1단계 ㅇ", description = "회원가입 정보를 입력")
     public RegistrationResponse registerUser(@RequestBody RegisterRequest request,
                                              @CookieValue(value = "language", required = false) Language language, HttpServletResponse response) {
 
@@ -240,17 +233,6 @@ public class UserController {
         }
     }
 
-    // 로그인 된 사용자 정보를 가져옴.
-    private Long getAuthenticatedUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
-            String email = ((UserDetails) authentication.getPrincipal()).getUsername(); // 현재 로그인한 사용자의 이메일 가져오기
-            return userService.getUserByEmail(email).getUserId(); // 이메일로 User 조회 후 user_id 반환
-        }
-        throw new BadRequestException("User is not authenticated.");
-    }
-
     // 언어 변경
     @PutMapping("language/change")
     @Operation(summary = "언어 변경", description = "언어 변경")
@@ -263,7 +245,7 @@ public class UserController {
 
         response.addCookie(languageCookie);
 
-        Long userId = getAuthenticatedUserId();
+        Long userId = userService.getAuthenticatedUserId();
         userService.updateUserLanguage(userId, language);
 
         return ResponseEntity.ok("Language updated successfully");
@@ -328,79 +310,5 @@ public class UserController {
         userRepository.save(user);
 
         return ResponseEntity.ok("Password reset successfully.");
-    }
-
-
-    // 프로필 사진 수정
-    @PutMapping(value = "/profile/change", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "프로필 사진 수정", description = "기존 프로필 사진을 새로운 이미지로 교체")
-    public ResponseEntity<String> updateProfileImage(
-            @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
-            @RequestPart("newProfileImage") MultipartFile newProfileImage
-    ) {
-        Long userId = getAuthenticatedUserId();
-
-        String existingProfileUrl = userService.getProfileImageUrl(userId);
-
-        // 3) 기존 이미지가 있다면 S3에서 삭제
-        if (existingProfileUrl != null && !existingProfileUrl.isEmpty()) {
-            userService.deleteFile(existingProfileUrl);
-        }
-
-        // 4) 새로운 프로필 이미지를 S3에 업로드
-        String newProfileUrl = userService.uploadProfileImage(newProfileImage);
-
-        // 5) 사용자 프로필 업데이트
-        userService.updateUserProfileImage(userId, newProfileUrl);
-
-        return ResponseEntity.ok("Profile image updated successfully.");
-    }
-
-    // 프로필 삭제
-    @DeleteMapping("/profile/delete")
-    @Operation(summary = "프로필 사진 삭제", description = "현재 프로필 사진을 삭제")
-    public ResponseEntity<String> deleteProfileImage() {
-        Long userId = getAuthenticatedUserId();
-
-        // 현재 저장된 프로필 이미지 URL 가져오기
-        String existingProfileUrl = userService.getProfileImageUrl(userId);
-
-        if (existingProfileUrl == null || existingProfileUrl.isEmpty()) {
-            return ResponseEntity.badRequest().body("No profile image to delete.");
-        }
-
-        // S3에서 기존 프로필 이미지 삭제
-        userService.deleteFile(existingProfileUrl);
-
-        // 사용자 프로필 정보 업데이트 (프로필 이미지를 NULL로 설정)
-        userService.updateUserProfileImage(userId, null);
-
-        return ResponseEntity.ok("Profile image deleted successfully.");
-    }
-
-
-    // 프로필 조회 API
-    @GetMapping("/profile/read")
-    @Operation(summary = "프로필 조회", description = "현재 로그인한 사용자의 프로필 정보를 반환")
-    public String getProfile() {
-        Long userId = getAuthenticatedUserId();
-
-        return userService.getProfileImageUrl(userId);
-    }
-
-    // 회원탈퇴
-    @DeleteMapping("/user/delete")
-    @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자의 계정을 삭제 - 비활성화")
-    public ResponseEntity<String> deleteUser(@RequestBody DeleteReqeust deleteReqeust, HttpServletResponse response) {
-        try {
-            Long userId = getAuthenticatedUserId(); // 현재 로그인한 사용자 ID 가져오기
-            userService.deactivate(userId, deleteReqeust);
-            jwtService.clearAccessTokenCookie(response);
-            return ResponseEntity.ok("User deleted successfully.");
-        } catch (BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BadRequestException("An error occurred while deleting the user.");
-        }
     }
 }
