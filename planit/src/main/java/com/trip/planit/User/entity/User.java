@@ -23,7 +23,12 @@ public class User {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(name="isGoogleLogin", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private Role role;
+
+    @Builder.Default
+    @Column(name="is_google_login", nullable = false)
     private boolean isGoogleLogin = false;
 
     @Column(name="email", length = 100, nullable = false, unique = true)
