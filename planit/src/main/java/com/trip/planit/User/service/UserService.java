@@ -14,6 +14,9 @@ import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.repository.UserRepository;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -174,6 +177,7 @@ public class UserService {
                 .profile(profile)
                 .createdAt(LocalDateTime.now())
                 .language(tempUser.getLanguage())
+                .role(Role.ROLE_USER)  // 기본 역할 지정
                 .build();
 
         userRepository.save(user);
@@ -250,4 +254,14 @@ public class UserService {
         return userRepository.existsByEmail(email);
     }
 
+    // 로그인 된 사용자 정보를 가져옴.
+    public Long getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername(); // 현재 로그인한 사용자의 이메일 가져오기
+            return getUserByEmail(email).getUserId(); // 이메일로 User 조회 후 user_id 반환
+        }
+        throw new BadRequestException("User is not authenticated.");
+    }
 }

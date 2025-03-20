@@ -1,6 +1,7 @@
 package com.trip.planit.User.security;
 
 import com.trip.planit.User.entity.CookieRule;
+import com.trip.planit.User.entity.Role;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,15 +20,15 @@ public class JwtService {
         this.jwtUtil = jwtUtil;
     }
 
-    public void addAccessTokenCookie(HttpServletResponse response, String userEmail) {
-        // JWT 토큰 생성
-        String token = jwtUtil.generateToken(userEmail);
+    public void addAccessTokenCookie(HttpServletResponse response, String userEmail, Role role) {
+        // JWT 토큰 생성 (이메일과 역할을 포함)
+        String token = jwtUtil.generateToken(userEmail, role);
 
         // 쿠키 생성 (CookieRule.ACCESS_PREFIX의 값은 "access")
         Cookie jwtCookie = new Cookie(CookieRule.ACCESS_PREFIX.getValue(), token);
         jwtCookie.setHttpOnly(true);       // JavaScript 접근 차단
-        jwtCookie.setSecure(true);         // HTTPS 환경에서만 전송 (운영 시 적용)
-        jwtCookie.setPath("/");            // 애플리케이션 전체에 적용
+        jwtCookie.setSecure(true);         // HTTPS 환경에서만 전송 (운영 시 적용) //// ***** 서버 배포 시에는 true로 변경 ***
+        jwtCookie.setPath("/");             // 애플리케이션 전체에 적용
         jwtCookie.setMaxAge(ACCESS_TOKEN_EXPIRATION_SECONDS); // 쿠키 만료시간 설정 (초 단위)
 
         // 응답에 쿠키 추가

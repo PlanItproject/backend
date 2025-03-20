@@ -1,6 +1,6 @@
 package com.trip.planit.User.entity;
 
 public enum Role {
-    Admin,
+    ROLE_Admin,
     ROLE_USER,
 }
