@@ -1,7 +1,11 @@
 package com.trip.planit.User.controller;
 
 import com.trip.planit.User.entity.ChatMessage;
+import com.trip.planit.User.entity.ChatRoom;
+import com.trip.planit.User.entity.User;
 import com.trip.planit.User.repository.ChatMessageRepository;
+import com.trip.planit.User.repository.UserRepository;
+import com.trip.planit.User.service.ChatRoomService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -19,11 +23,16 @@ public class ChatController {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatRoomService chatRoomService;
+    private final UserRepository userRepository;
 
     @Autowired
-    public ChatController(SimpMessagingTemplate messagingTemplate, ChatMessageRepository chatMessageRepository) {
+    public ChatController(SimpMessagingTemplate messagingTemplate, ChatMessageRepository chatMessageRepository,
+        ChatRoomService chatRoomService, UserRepository userRepository) {
         this.messagingTemplate = messagingTemplate;
         this.chatMessageRepository = chatMessageRepository;
+        this.chatRoomService = chatRoomService;
+        this.userRepository = userRepository;
     }
 
     // 1:1 채팅 메시지 전송 처리 (현재 인증된 사용자의 정보를 사용)
@@ -34,25 +43,28 @@ public class ChatController {
             return;
         }
 
-        String sender = principal.getName();
-        chatMessage.setSender(sender);
+        String senderEmail = principal.getName();
+        chatMessage.setSender(senderEmail);
+        System.out.println("메시지 전송 요청 - Sender: " + senderEmail + ", Receiver: " + chatMessage.getReceiver());
 
-        // **고침**: 추가 로그 - sender와 receiver 출력
-        System.out.println("메시지 전송 요청 - Sender: " + sender + ", Receiver: " + chatMessage.getReceiver());
+        // sender와 receiver 이메일을 기반으로 User 엔티티 조회
+        User sender = userRepository.findByEmail(senderEmail)
+            .orElseThrow(() -> new RuntimeException("Sender not found: " + senderEmail));
+        User receiver = userRepository.findByEmail(chatMessage.getReceiver())
+            .orElseThrow(() -> new RuntimeException("Receiver not found: " + chatMessage.getReceiver()));
 
-        // **고침**: 채팅 메시지를 DB에 저장 (채팅 내역 보관)
+        // 채팅방 생성 또는 기존 채팅방 조회
+        ChatRoom chatRoom = chatRoomService.createChatRoom(sender, receiver);
+        chatMessage.setChatRoom(chatRoom);
+
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
-
-        // **고침**: 저장된 메시지를 전송 (추가 정보 포함)
         messagingTemplate.convertAndSendToUser(
                 chatMessage.getReceiver(), "/queue/private", savedMessage);
 
-        // **고침**: 전송 후 로그 출력
         System.out.println("메시지 전송 완료: " + savedMessage.getId());
     }
 
     // 클라이언트가 메시지를 읽었을 때 호출되는 메서드
-// 읽음 리시트 전송 추가 (**고침**)
     @MessageMapping("/chat.markAsRead")
     public void markMessageAsRead(@Payload Long messageId) {
         Optional<ChatMessage> optionalMessage = chatMessageRepository.findById(messageId);

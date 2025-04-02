@@ -30,9 +30,7 @@ public class ChatRoomService {
 
     // 1:1 채팅방 생성 (두 사용자)
     public ChatRoom createChatRoom(User user1, User user2) {
-        // 기존 채팅방이 있는지 확인 (이미 1:1 대화가 있다면)
         Optional<ChatRoom> existing = chatRoomRepository.findChatRoomByUserIds(user1.getUserId(), user2.getUserId());
-
         if (existing.isPresent()) {
             return existing.get();
         }
