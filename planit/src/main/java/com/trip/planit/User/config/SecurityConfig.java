@@ -35,15 +35,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         System.out.println("Configuring SecurityFilterChain...");
+        // **고쳤어**: CSRF 비활성화 (stateless JWT 기반이므로)
+        http.csrf(csrf -> csrf.disable());
+
         http
                 .cors(withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // URL별 접근 권한 설정
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // **고쳤어**: WebSocket 엔드포인트(/ws/**)도 모두 허용
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/public/**").permitAll()
+                        .requestMatchers("/user/**", "/chatrooms/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/public/users/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 예외 처리 설정 (인증 실패 및 접근 거부)
@@ -62,7 +67,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:9090", "http://13.124.18.96:9090"));
+        // 허용할 Origin 목록 설정
+        configuration.setAllowedOrigins(List.of("http://localhost:9090", "http://13.124.18.96:9090", "http://localhost:63342"));
         // 허용할 HTTP 메서드 설정
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         // 모든 헤더 허용

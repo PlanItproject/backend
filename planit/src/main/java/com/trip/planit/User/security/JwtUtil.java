@@ -35,7 +35,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .setSubject(email)
-                .claim("role", "ROLE_" + role.name()) // 예: "ROLE_USER"
+                .claim("role",role.name())
                 .setIssuedAt(now)
                 .setExpiration(expiration)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)

@@ -39,6 +39,11 @@ spring:
 server:
   address: 0.0.0.0
   port: 9090
+  servlet:
+    session:
+      cookie:
+        secure: false  # 개발 환경에서는 HTTP 사용 시 secure 옵션을 false로 설정
+
 
 jwt:
   secret: ${JWT_SECRET}

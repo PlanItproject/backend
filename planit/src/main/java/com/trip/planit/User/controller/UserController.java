@@ -60,7 +60,6 @@ public class UserController {
     public ResponseEntity<String> deleteProfileImage() {
         Long userId = userService.getAuthenticatedUserId();
 
-
         // 현재 저장된 프로필 이미지 URL 가져오기
         String existingProfileUrl = userService.getProfileImageUrl(userId);
 

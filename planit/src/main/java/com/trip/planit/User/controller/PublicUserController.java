@@ -230,6 +230,7 @@ public class PublicUserController {
                     .platform(null)
                     .gender(null)
                     .language(null)
+                    .userId(null)
                     .build();
         }
     }

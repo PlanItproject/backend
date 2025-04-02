@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>실시간 채팅 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .panel { border: 1px solid #ccc; padding: 1em; margin-bottom: 2em; }
+        h2 { margin-top: 0; }
+        .log { font-size: 0.9em; color: #555; white-space: pre-wrap; margin-top: 0.5em; }
+        .messages { list-style-type: none; padding: 0; height: 200px; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 1em; }
+        .messages li { padding: 5px; border-bottom: 1px solid #eee; }
+        .chat-container { display: none; margin-top: 1em; }
+        .chat-header { font-weight: bold; margin-bottom: 0.5em; }
+    </style>
+</head>
+<body>
+<h1>실시간 채팅 테스트</h1>
+<p>
+    **테스트 방법:**<br>
+    각 계정 A와 B를 별도의 브라우저(또는 시크릿 모드)에서 열고 각각 로그인하세요.
+</p>
+
+<!-- 계정 A 패널 -->
+<div class="panel" id="panelA">
+    <h2>계정 A</h2>
+    <!-- 로그인 폼 -->
+    <form id="loginFormA">
+        <label>Email:</label>
+        <input type="email" id="loginEmailA" placeholder="accountA@example.com" required>
+        <br><br>
+        <label>Password:</label>
+        <input type="password" id="loginPasswordA" required>
+        <br><br>
+        <button type="submit">로그인</button>
+    </form>
+    <div id="loginResultA" class="log"></div>
+    <hr>
+    <!-- 채팅방 생성 영역 -->
+    <div id="createChatRoomPanelA" style="display:none;">
+        <h3>채팅방 생성 (A)</h3>
+        <form id="createChatRoomFormA">
+            <label>대화 상대 ID (숫자):</label>
+            <input type="number" id="guestIdA" placeholder="예: 2" required>
+            <button type="submit">채팅방 생성</button>
+        </form>
+        <div id="createChatRoomResultA" class="log"></div>
+    </div>
+    <hr>
+    <!-- 채팅 인터페이스 -->
+    <button onclick="connectChat('A')">Chat Connect (A)</button>
+    <button onclick="disconnectChat('A')">Chat Disconnect (A)</button>
+    <div id="chatStatusA" class="log">Disconnected</div>
+    <div class="chat-container" id="chatContainerA">
+        <div class="chat-header">채팅 (A)</div>
+        <label>Receiver (예: accountB@example.com):</label>
+        <input type="text" id="chatReceiverA" value="accountB@example.com">
+        <br><br>
+        <label>Message:</label>
+        <input type="text" id="chatMessageA" value="Hello from A!">
+        <button onclick="sendChatMessage('A')">Send</button>
+        <ul id="chatMessagesA" class="messages"></ul>
+    </div>
+</div>
+
+<!-- 계정 B 패널 -->
+<div class="panel" id="panelB">
+    <h2>계정 B</h2>
+    <!-- 로그인 폼 -->
+    <form id="loginFormB">
+        <label>Email:</label>
+        <input type="email" id="loginEmailB" placeholder="accountB@example.com" required>
+        <br><br>
+        <label>Password:</label>
+        <input type="password" id="loginPasswordB" required>
+        <br><br>
+        <button type="submit">로그인</button>
+    </form>
+    <div id="loginResultB" class="log"></div>
+    <hr>
+    <!-- 채팅방 생성 영역 -->
+    <div id="createChatRoomPanelB" style="display:none;">
+        <h3>채팅방 생성 (B)</h3>
+        <form id="createChatRoomFormB">
+            <label>대화 상대 ID (숫자):</label>
+            <input type="number" id="guestIdB" placeholder="예: 1" required>
+            <button type="submit">채팅방 생성</button>
+        </form>
+        <div id="createChatRoomResultB" class="log"></div>
+    </div>
+    <hr>
+    <!-- 채팅 인터페이스 -->
+    <button onclick="connectChat('B')">Chat Connect (B)</button>
+    <button onclick="disconnectChat('B')">Chat Disconnect (B)</button>
+    <div id="chatStatusB" class="log">Disconnected</div>
+    <div class="chat-container" id="chatContainerB">
+        <div class="chat-header">채팅 (B)</div>
+        <label>Receiver (예: accountA@example.com):</label>
+        <input type="text" id="chatReceiverB" value="accountA@example.com">
+        <br><br>
+        <label>Message:</label>
+        <input type="text" id="chatMessageB" value="Hello from B!">
+        <button onclick="sendChatMessage('B')">Send</button>
+        <ul id="chatMessagesB" class="messages"></ul>
+    </div>
+</div>
+
+<!-- SockJS와 STOMP 라이브러리 로드 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<script>
+    // 각 계정별 STOMP 클라이언트를 저장하는 객체
+    const chatClients = {};
+    let loggedInUserIdA = null;
+    let loggedInUserIdB = null;
+    let currentChatRoomId = null; // 채팅방 생성 시 서버에서 받은 방 ID
+
+    // 계정 A 로그인 처리
+    document.getElementById('loginFormA').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmailA').value;
+        const password = document.getElementById('loginPasswordA').value;
+        try {
+            const response = await fetch('http://localhost:9090/public/users/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email, password })
+            });
+            if (!response.ok) throw new Error("로그인 실패: " + response.status);
+            const data = await response.json();
+            loggedInUserIdA = data.userId;
+            document.getElementById('loginResultA').innerText = "로그인 성공: " + data.email;
+            document.getElementById('createChatRoomPanelA').style.display = 'block';
+        } catch (error) {
+            document.getElementById('loginResultA').innerText = "로그인 오류: " + error;
+        }
+    });
+
+    // 계정 B 로그인 처리
+    document.getElementById('loginFormB').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmailB').value;
+        const password = document.getElementById('loginPasswordB').value;
+        try {
+            const response = await fetch('http://localhost:9090/public/users/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email, password })
+            });
+            if (!response.ok) throw new Error("로그인 실패: " + response.status);
+            const data = await response.json();
+            loggedInUserIdB = data.userId;
+            document.getElementById('loginResultB').innerText = "로그인 성공: " + data.email;
+            document.getElementById('createChatRoomPanelB').style.display = 'block';
+        } catch (error) {
+            document.getElementById('loginResultB').innerText = "로그인 오류: " + error;
+        }
+    });
+
+    // 채팅방 생성 처리 (계정 A)
+    document.getElementById('createChatRoomFormA').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const guestId = document.getElementById('guestIdA').value;
+        try {
+            const response = await fetch('http://localhost:9090/chatrooms/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ roomMakerId: loggedInUserIdA, guestId: guestId })
+            });
+            if (!response.ok) throw new Error("채팅방 생성 실패: " + response.status);
+            const chatRoom = await response.json();
+            currentChatRoomId = chatRoom.id; // 방 ID 저장
+            document.getElementById('createChatRoomResultA').innerText = "채팅방 생성 성공: 방 ID " + chatRoom.id;
+            // 채팅 인터페이스 보이기
+            document.getElementById('chatContainerA').style.display = 'block';
+        } catch (error) {
+            document.getElementById('createChatRoomResultA').innerText = "채팅방 생성 오류: " + error;
+        }
+    });
+
+    // 채팅방 생성 처리 (계정 B)
+    document.getElementById('createChatRoomFormB').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const guestId = document.getElementById('guestIdB').value;
+        try {
+            const response = await fetch('http://localhost:9090/chatrooms/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ roomMakerId: loggedInUserIdB, guestId: guestId })
+            });
+            if (!response.ok) throw new Error("채팅방 생성 실패: " + response.status);
+            const chatRoom = await response.json();
+            currentChatRoomId = chatRoom.id; // 같은 방을 사용한다고 가정
+            document.getElementById('createChatRoomResultB').innerText = "채팅방 생성 성공: 방 ID " + chatRoom.id;
+            document.getElementById('chatContainerB').style.display = 'block';
+        } catch (error) {
+            document.getElementById('createChatRoomResultB').innerText = "채팅방 생성 오류: " + error;
+        }
+    });
+
+    // STOMP를 이용하여 채팅방에 연결하는 함수 (계정별)
+    function connectChat(accountKey) {
+        if (!currentChatRoomId) {
+            addChatLog("채팅방 ID가 설정되지 않았습니다. 먼저 채팅방을 생성하세요.");
+            return;
+        }
+        const socket = new SockJS('http://localhost:9090/ws');
+        const client = Stomp.over(socket);
+        client.connect({}, function(frame) {
+            console.log("STOMP 연결 성공 (" + accountKey + "): " + frame);
+            document.getElementById('chatStatus' + accountKey).innerText = "Connected";
+            chatClients[accountKey] = client;
+            // 사용자 대상(개인) 큐를 구독합니다.
+            client.subscribe("/user/queue/private", function(message) {
+                let displayMessage;
+                try {
+                    const data = JSON.parse(message.body);
+                    displayMessage = data.sender + ": " + data.content;
+                } catch (e) {
+                    displayMessage = message.body;
+                }
+                const li = document.createElement('li');
+                li.innerText = displayMessage;
+                document.getElementById('chatMessages' + accountKey).appendChild(li);
+            });
+            addChatLog("채팅 구독 완료 (" + accountKey + "): /user/queue/private");
+        }, function(error) {
+            addChatLog("STOMP 연결 오류 (" + accountKey + "): " + error);
+        });
+    }
+
+    function disconnectChat(accountKey) {
+        if (chatClients[accountKey]) {
+            chatClients[accountKey].disconnect(function() {
+                document.getElementById('chatStatus' + accountKey).innerText = "Disconnected";
+                addChatLog("채팅 연결 해제 (" + accountKey + ")");
+                delete chatClients[accountKey];
+            });
+        }
+    }
+
+    // 메시지 전송 함수 (계정별)
+    function sendChatMessage(accountKey) {
+        const client = chatClients[accountKey];
+        if (!client || !client.connected) {
+            alert('Chat not connected for account ' + accountKey + '!');
+            return;
+        }
+        const receiver = document.getElementById('chatReceiver' + accountKey).value;
+        const message = document.getElementById('chatMessage' + accountKey).value;
+        const chatMessage = { receiver, content: message };
+        client.send('/pub/chat.sendPrivateMessage', {}, JSON.stringify(chatMessage));
+        const li = document.createElement('li');
+        li.innerText = "나: " + message;
+        document.getElementById('chatMessages' + accountKey).appendChild(li);
+    }
+
+    // 간단한 로그 출력 (콘솔로 출력)
+    function addChatLog(message) {
+        console.log(message);
+    }
+
+    // 전역 함수 등록 (버튼 onclick에서 참조 가능하도록)
+    window.connectChat = connectChat;
+    window.disconnectChat = disconnectChat;
+    window.sendChatMessage = sendChatMessage;
+</script>
+</body>
+</html>

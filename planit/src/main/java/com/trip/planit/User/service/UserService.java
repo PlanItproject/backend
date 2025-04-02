@@ -58,6 +58,7 @@ public class UserService {
                 .mbti(user.getMbti())
                 .gender(user.getGender())
                 .platform(user.getPlatform())
+                .userId(user.getUserId())
                 .build();
     }
 

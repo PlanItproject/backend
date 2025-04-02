@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>채팅방 UI 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .panel { border: 1px solid #ccc; padding: 1em; margin-bottom: 2em; }
+        h2, h3 { margin-top: 0; }
+        .log { font-size: 0.9em; color: #555; white-space: pre-wrap; margin-top: 0.5em; }
+        .messages { list-style-type: none; padding: 0; }
+        .messages li { padding: 5px 0; }
+    </style>
+</head>
+<body>
+<h1>채팅방 UI 테스트</h1>
+<p>
+    **테스트 방법:**<br>
+    1. 좌측 로그인 영역에서 이메일과 비밀번호를 입력 후 로그인<br>
+    2. 로그인 성공 시 서버에서 Set-Cookie 헤더로 JWT 등이 발송되고, 브라우저에 저장됩니다.<br>
+    3. 로그인 후, 해당 사용자가 참여한 채팅방 목록이 로드되며, 채팅방 선택 시 이전 대화 내역 및 실시간 채팅이 가능합니다.
+</p>
+
+<!-- 로그인 영역 -->
+<div class="panel" id="loginPanel">
+    <h2>로그인</h2>
+    <form id="loginForm">
+        <label>이메일:</label>
+        <input type="email" id="email" placeholder="예: user@example.com" required><br>
+        <label>비밀번호:</label>
+        <input type="password" id="password" required>
+        <button type="submit">로그인</button>
+    </form>
+    <div id="loginResult" class="log"></div>
+</div>
+
+<!-- 채팅방 목록 패널 -->
+<div class="panel" id="chatRoomPanel" style="display:none;">
+    <h2>내 채팅방 목록</h2>
+    <select id="chatRoomSelect"></select>
+    <button onclick="loadChatHistory()">채팅 내역 불러오기</button>
+    <div id="roomLog" class="log"></div>
+</div>
+
+<!-- 채팅 인터페이스 패널 -->
+<div class="panel" id="chatInterface" style="display:none;">
+    <h3>채팅방: <span id="chatRoomTitle"></span></h3>
+    <ul id="messages" class="messages"></ul>
+    <br>
+    <input type="text" id="messageInput" placeholder="메시지 입력..." style="width: 300px;">
+    <button onclick="sendMessage()">메시지 전송</button>
+    <div id="chatLog" class="log"></div>
+</div>
+
+<!-- SockJS와 STOMP 라이브러리 로드 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<script>
+    let loggedInEmail = null;
+    let stompClient = null;
+    let currentChatRoomId = null;
+
+    // 로그인 처리: 서버의 /api/login 엔드포인트 호출
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        try {
+            const response = await fetch('http://localhost:9090/public/users/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // 서버가 보낸 쿠키를 저장
+                body: JSON.stringify({ email, password })
+            });
+            if (!response.ok) throw new Error("로그인 실패: " + response.status);
+            const data = await response.json();
+            // 서버가 반환한 데이터에 email 정보가 있으면 사용, 없으면 입력값 사용
+            loggedInEmail = data.email || email;
+            document.getElementById('loginResult').innerText = "로그인 성공: " + loggedInEmail;
+            // 로그인 성공 후 채팅방 목록 패널 표시
+            document.getElementById('chatRoomPanel').style.display = 'block';
+            await loadChatRooms();
+        } catch (error) {
+            document.getElementById('loginResult').innerText = "로그인 오류: " + error;
+        }
+    });
+
+    // 채팅방 목록 로드 함수 (사용자 관련 채팅방 조회)
+    async function loadChatRooms() {
+        try {
+            const response = await fetch(`http://localhost:9090/chatrooms/user/${loggedInEmail}`, {
+                credentials: 'include'
+            });
+            if (!response.ok) throw new Error("채팅방 불러오기 실패: " + response.status);
+            const rooms = await response.json();
+            const select = document.getElementById('chatRoomSelect');
+            select.innerHTML = '';
+            rooms.forEach(room => {
+                const option = document.createElement('option');
+                option.value = room.id;
+                option.text = "채팅방 " + room.id;
+                select.appendChild(option);
+            });
+            addRoomLog("채팅방 목록 로드 완료");
+        } catch (error) {
+            addRoomLog("채팅방 로드 오류: " + error);
+        }
+    }
+
+    // 채팅 내역 로드 함수
+    async function loadChatHistory() {
+        const select = document.getElementById('chatRoomSelect');
+        currentChatRoomId = select.value;
+        document.getElementById('chatRoomTitle').innerText = "채팅방 " + currentChatRoomId;
+        try {
+            const response = await fetch(`http://localhost:9090/chatrooms/history/${currentChatRoomId}`, {
+                credentials: 'include'
+            });
+            if (!response.ok) throw new Error("채팅 내역 불러오기 실패: " + response.status);
+            const messages = await response.json();
+            const messagesList = document.getElementById('messages');
+            messagesList.innerHTML = '';
+            messages.forEach(msg => {
+                const li = document.createElement('li');
+                li.innerText = msg.sender + ": " + msg.content;
+                messagesList.appendChild(li);
+            });
+            addChatLog("이전 대화 내역 로드 완료");
+            document.getElementById('chatInterface').style.display = 'block';
+            connectToChatRoom();
+        } catch (error) {
+            addChatLog("채팅 내역 로드 오류: " + error);
+        }
+    }
+
+    // STOMP를 이용하여 채팅방에 연결 및 구독 설정
+    function connectToChatRoom() {
+        const socket = new SockJS('http://localhost:9090/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            addChatLog("STOMP 연결 성공: " + frame);
+            const subscription = stompClient.subscribe(`/topic/chatrooms/${currentChatRoomId}`, function(message) {
+                console.log("채팅 메시지 수신:", message.body);
+                let displayMessage = message.body;
+                try {
+                    const data = JSON.parse(message.body);
+                    displayMessage = data.sender + ": " + data.content;
+                } catch (e) {
+                    console.log("메시지 포맷 오류:", message.body);
+                }
+                const li = document.createElement('li');
+                li.innerText = displayMessage;
+                document.getElementById('messages').appendChild(li);
+            });
+            addChatLog("채팅방 구독 완료: /topic/chatrooms/" + currentChatRoomId + " (id: " + subscription.id + ")");
+        }, function(error) {
+            addChatLog("STOMP 연결 오류: " + error);
+        });
+    }
+
+    // 메시지 전송 함수
+    function sendMessage() {
+        if (stompClient && stompClient.connected && currentChatRoomId) {
+            const message = document.getElementById('messageInput').value;
+            const chatMessage = {
+                content: message,
+                chatRoomId: currentChatRoomId
+            };
+            stompClient.send('/pub/chatroom.sendMessage', {}, JSON.stringify(chatMessage));
+            const li = document.createElement('li');
+            li.innerText = "나: " + message;
+            document.getElementById('messages').appendChild(li);
+        } else {
+            alert("채팅방에 연결되지 않았습니다.");
+        }
+    }
+
+    // 로그 출력 함수들
+    function addRoomLog(message) {
+        const logDiv = document.getElementById('roomLog');
+        logDiv.innerText += message + "\n";
+    }
+    function addChatLog(message) {
+        const logDiv = document.getElementById('chatLog');
+        logDiv.innerText += message + "\n";
+    }
+</script>
+</body>
+</html>

@@ -16,4 +16,7 @@ public class LoginResponse {
     private Platform platform;
     private Gender gender;
     private Language language;
+
+    // 채팅방
+    private Long userId;
 }

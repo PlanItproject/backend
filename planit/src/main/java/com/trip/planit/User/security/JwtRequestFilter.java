@@ -5,6 +5,7 @@ import com.trip.planit.User.entity.Role;
 import io.micrometer.common.lang.NonNull;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +40,28 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
-                                    throws ServletException, IOException {
+            throws ServletException, IOException {
+
+        if (request.getCookies() != null) {
+            System.out.println("수정됨 !! Received Cookies:");
+            for (Cookie cookie : request.getCookies()) {
+                System.out.println("Cookie Name: " + cookie.getName() + ", Value: " + cookie.getValue());
+            }
+        } else {
+            System.out.println("수정됨 !! No cookies received in request.");
+        }
+
+        String requestURI = request.getRequestURI();
+        if (requestURI.startsWith("/public/users/") ||
+                requestURI.startsWith("/swagger-ui/") ||
+                requestURI.startsWith("/v3/api-docs/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // 기존 Authorization 헤더 대신 쿠키에서 JWT 토큰 읽기
         String jwt = "";
-        if(request.getCookies() != null) {
+        if (request.getCookies() != null) {
             jwt = cookieUtil.resolveTokenFromCookie(request.getCookies(), CookieRule.ACCESS_PREFIX);
         } else {
             System.out.println("쿠키가 존재하지 않습니다.");
