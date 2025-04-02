@@ -2,10 +2,12 @@ package com.trip.planit.User.controller;
 
 import com.trip.planit.User.entity.ChatMessage;
 import com.trip.planit.User.entity.ChatRoom;
+import com.trip.planit.User.entity.MessageType;
 import com.trip.planit.User.entity.User;
 import com.trip.planit.User.repository.ChatMessageRepository;
 import com.trip.planit.User.repository.UserRepository;
 import com.trip.planit.User.service.ChatRoomService;
+import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -56,12 +58,37 @@ public class ChatController {
         // 채팅방 생성 또는 기존 채팅방 조회
         ChatRoom chatRoom = chatRoomService.createChatRoom(sender, receiver);
         chatMessage.setChatRoom(chatRoom);
+        chatMessage.setType(MessageType.PRIVATE);
 
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
         messagingTemplate.convertAndSendToUser(
                 chatMessage.getReceiver(), "/queue/private", savedMessage);
 
         System.out.println("메시지 전송 완료: " + savedMessage.getId());
+    }
+
+    // 채팅 시작 시 시스템 메시지 전송: "채팅 시작: [현재 날짜/시간]"
+    @MessageMapping("/chat.start")
+    public void sendChatStartNotification(@Payload Long chatRoomId, Principal principal) {
+        if (principal == null) {
+            System.err.println("채팅 시작 시스템 메시지 전송 실패: 인증된 사용자 정보(Principal)가 없습니다.");
+            return;
+        }
+        // 채팅방 조회
+        ChatRoom chatRoom = chatRoomService.getChatRoomById(chatRoomId);
+
+        // 시스템 메시지 생성 (날짜/시간 포함)
+        ChatMessage systemMessage = new ChatMessage();
+        systemMessage.setChatRoom(chatRoom);
+        systemMessage.setType(MessageType.SYSTEM);
+        systemMessage.setSender("SYSTEM");
+        systemMessage.setContent("채팅 시작: " + LocalDateTime.now());
+
+        ChatMessage savedMessage = chatMessageRepository.save(systemMessage);
+        // 채팅방 구독자 모두에게 전송 (토픽 사용)
+        messagingTemplate.convertAndSend("/topic/chatrooms/" + chatRoomId, savedMessage);
+
+        System.out.println("채팅 시작 시스템 메시지 전송 완료: " + savedMessage.getContent());
     }
 
     // 클라이언트가 메시지를 읽었을 때 호출되는 메서드
@@ -79,6 +106,30 @@ public class ChatController {
             messagingTemplate.convertAndSendToUser(sender, "/queue/read-receipt", messageId);
             System.out.println("메시지 " + messageId + " 읽음 처리 완료 및 리시트 전송됨.");
         }
+    }
+
+    @MessageMapping("/chat.leave")
+    public void sendChatLeaveNotification(@Payload Long chatRoomId, Principal principal) {
+        if (principal == null) {
+            System.err.println("채팅 나가기 시스템 메시지 전송 실패: 인증된 사용자 정보(Principal)가 없습니다.");
+            return;
+        }
+        String userEmail = principal.getName();
+        ChatRoom chatRoom = chatRoomService.getChatRoomById(chatRoomId);
+
+        ChatMessage systemMessage = new ChatMessage();
+        systemMessage.setChatRoom(chatRoom);
+        systemMessage.setType(MessageType.SYSTEM);
+        systemMessage.setSender("SYSTEM");
+        systemMessage.setContent(userEmail + "님이 채팅방을 나갔습니다.");
+
+        ChatMessage savedMessage = chatMessageRepository.save(systemMessage);
+        messagingTemplate.convertAndSend("/topic/chatrooms/" + chatRoomId, savedMessage);
+
+        // 채팅방 삭제
+        chatRoomService.deleteChatRoom(chatRoomId);
+
+        System.out.println("채팅 나가기 시스템 메시지 전송 완료 및 채팅방 삭제: " + savedMessage.getContent());
     }
 
     @GetMapping("/history")

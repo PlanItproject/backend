@@ -49,4 +49,10 @@ public class ChatRoomService {
     public List<ChatRoom> getChatRoomsForUser(Long userId) {
         return chatRoomRepository.findByUser1IdOrUser2Id(userId, userId);
     }
+
+    // 채팅방 삭제 (채팅방 나가기 시 사용)
+    public void deleteChatRoom(Long chatRoomId) {
+        chatRoomRepository.deleteById(chatRoomId);
+    }
+
 }

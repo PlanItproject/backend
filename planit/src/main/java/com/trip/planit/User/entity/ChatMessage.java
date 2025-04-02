@@ -1,5 +1,6 @@
 package com.trip.planit.User.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 public class ChatMessage {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chat_room_id")
+    @JsonBackReference  // 여기 추가
     private ChatRoom chatRoom;
 
     @Id

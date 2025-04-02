@@ -52,13 +52,16 @@
     <button onclick="disconnectChat('A')">Chat Disconnect (A)</button>
     <div id="chatStatusA" class="log">Disconnected</div>
     <div class="chat-container" id="chatContainerA">
-        <div class="chat-header">채팅 (A)</div>
+        <div class="chat-header">
+            채팅 (A) - 방 ID: <span id="chatRoomIdDisplayA"></span>
+        </div>
         <label>Receiver (예: accountB@example.com):</label>
         <input type="text" id="chatReceiverA" value="accountB@example.com">
         <br><br>
         <label>Message:</label>
         <input type="text" id="chatMessageA" value="Hello from A!">
         <button onclick="sendChatMessage('A')">Send</button>
+        <button onclick="leaveChatRoom('A')">채팅방 나가기</button>
         <ul id="chatMessagesA" class="messages"></ul>
     </div>
 </div>
@@ -94,13 +97,16 @@
     <button onclick="disconnectChat('B')">Chat Disconnect (B)</button>
     <div id="chatStatusB" class="log">Disconnected</div>
     <div class="chat-container" id="chatContainerB">
-        <div class="chat-header">채팅 (B)</div>
+        <div class="chat-header">
+            채팅 (B) - 방 ID: <span id="chatRoomIdDisplayB"></span>
+        </div>
         <label>Receiver (예: accountA@example.com):</label>
         <input type="text" id="chatReceiverB" value="accountA@example.com">
         <br><br>
         <label>Message:</label>
         <input type="text" id="chatMessageB" value="Hello from B!">
         <button onclick="sendChatMessage('B')">Send</button>
+        <button onclick="leaveChatRoom('B')">채팅방 나가기</button>
         <ul id="chatMessagesB" class="messages"></ul>
     </div>
 </div>
@@ -175,8 +181,9 @@
             const chatRoom = await response.json();
             currentChatRoomId = chatRoom.id; // 방 ID 저장
             document.getElementById('createChatRoomResultA').innerText = "채팅방 생성 성공: 방 ID " + chatRoom.id;
-            // 채팅 인터페이스 보이기
+            // 채팅 인터페이스 보이기 및 방 ID 표시
             document.getElementById('chatContainerA').style.display = 'block';
+            document.getElementById('chatRoomIdDisplayA').innerText = chatRoom.id;
         } catch (error) {
             document.getElementById('createChatRoomResultA').innerText = "채팅방 생성 오류: " + error;
         }
@@ -198,6 +205,7 @@
             currentChatRoomId = chatRoom.id; // 같은 방을 사용한다고 가정
             document.getElementById('createChatRoomResultB').innerText = "채팅방 생성 성공: 방 ID " + chatRoom.id;
             document.getElementById('chatContainerB').style.display = 'block';
+            document.getElementById('chatRoomIdDisplayB').innerText = chatRoom.id;
         } catch (error) {
             document.getElementById('createChatRoomResultB').innerText = "채팅방 생성 오류: " + error;
         }
@@ -215,7 +223,7 @@
             console.log("STOMP 연결 성공 (" + accountKey + "): " + frame);
             document.getElementById('chatStatus' + accountKey).innerText = "Connected";
             chatClients[accountKey] = client;
-            // 사용자 대상(개인) 큐를 구독합니다.
+            // 개인 큐 구독: 자신의 경우
             client.subscribe("/user/queue/private", function(message) {
                 let displayMessage;
                 try {
@@ -260,6 +268,24 @@
         document.getElementById('chatMessages' + accountKey).appendChild(li);
     }
 
+    // 채팅방 나가기 함수: 시스템 메시지를 전송하고, 연결 해제 후 UI를 숨깁니다.
+    function leaveChatRoom(accountKey) {
+        if (!currentChatRoomId) {
+            alert("채팅방이 생성되지 않았습니다.");
+            return;
+        }
+        const client = chatClients[accountKey];
+        if (!client || !client.connected) {
+            alert("채팅 연결이 되어 있지 않습니다.");
+            return;
+        }
+        // "/pub/chat.leave" 경로로 채팅방 나가기 요청 전송 (서버에서 SYSTEM 메시지 처리)
+        client.send('/pub/chat.leave', {}, currentChatRoomId);
+        // 해당 계정의 채팅 UI 숨기기
+        document.getElementById('chatContainer' + accountKey).style.display = 'none';
+        disconnectChat(accountKey);
+    }
+
     // 간단한 로그 출력 (콘솔로 출력)
     function addChatLog(message) {
         console.log(message);
@@ -269,6 +295,7 @@
     window.connectChat = connectChat;
     window.disconnectChat = disconnectChat;
     window.sendChatMessage = sendChatMessage;
+    window.leaveChatRoom = leaveChatRoom;
 </script>
 </body>
 </html>

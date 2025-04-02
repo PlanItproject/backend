@@ -1,6 +1,9 @@
 package com.trip.planit.User.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -22,6 +25,11 @@ public class ChatRoom {
     private Long user2Id;
 
     private LocalDateTime createdAt;
+
+    // 채팅 메시지와 1:N 관계 설정 (Cascade, orphanRemoval 옵션 포함)
+    @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<ChatMessage> messages = new ArrayList<>();
 
     public static ChatRoom create() {
         ChatRoom room = new ChatRoom();
