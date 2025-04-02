@@ -40,13 +40,13 @@ public class ChatMessage {
 
     @Column(name = "createdAt", updatable = false)
     @CreatedDate
-    private LocalDate createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "is_read")
     private boolean isRead = false;
 
     @PrePersist
     public void prePersist() {
-        createdAt = LocalDate.now();
+        createdAt = LocalDateTime.now();
     }
 }

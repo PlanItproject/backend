@@ -11,4 +11,8 @@ public class ChatResponse {
     private Long roomMakerId;
     private Long guestId;
     private Long chatRoomId;
+    private String roomMakerNickName;
+    private String guestNickName;
+    private String roomMakerEmail;
+    private String guestEmail;
 }

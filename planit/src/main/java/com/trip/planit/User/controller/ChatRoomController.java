@@ -1,6 +1,7 @@
 package com.trip.planit.User.controller;
 
 import com.trip.planit.User.dto.ChatRequest;
+import com.trip.planit.User.dto.ChatResponse;
 import com.trip.planit.User.entity.ChatMessage;
 import com.trip.planit.User.entity.ChatRoom;
 import com.trip.planit.User.entity.User;
@@ -30,15 +31,25 @@ public class ChatRoomController {
 
     @Operation(summary = "채팅방 생성 API", description = "채팅방을 생성하는 API")
     @PostMapping("/create")
-    public ChatRoom createChatRoom(@RequestBody ChatRequest chatRequest) {
+    public ChatResponse createChatRoom(@RequestBody ChatRequest chatRequest) {
         System.out.println("Received ChatRequest: " + chatRequest);
 
-        User user1 = userRepository.findByUserId(chatRequest.getRoomMakerId())
-                .orElseThrow(() -> new RuntimeException("User not found: " + chatRequest.getRoomMakerId()));
-        User user2 = userRepository.findByUserId(chatRequest.getGuestId())
-                .orElseThrow(() -> new RuntimeException("User not found: " + chatRequest.getGuestId()));
+        User roomMaker = userRepository.findByUserId(chatRequest.getRoomMakerId())
+            .orElseThrow(() -> new RuntimeException("User not found: " + chatRequest.getRoomMakerId()));
+        User guest = userRepository.findByUserId(chatRequest.getGuestId())
+            .orElseThrow(() -> new RuntimeException("User not found: " + chatRequest.getGuestId()));
 
-        return chatRoomService.createChatRoom(user1, user2);
+        ChatRoom chatRoom = chatRoomService.createChatRoom(roomMaker, guest);
+        // 응답에 필요한 정보를 채워서 반환
+        return new ChatResponse(
+            roomMaker.getUserId(),
+            guest.getUserId(),
+            chatRoom.getId(),
+            roomMaker.getNickname(),
+            guest.getNickname(),
+            roomMaker.getEmail(),
+            guest.getEmail()
+        );
     }
 
     @Operation(summary = "채팅방 참가 API", description = "기존 채팅방에 참가합니다.")

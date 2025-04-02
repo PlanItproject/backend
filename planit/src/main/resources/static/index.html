@@ -16,9 +16,10 @@
 <h1>채팅방 UI 테스트</h1>
 <p>
     **테스트 방법:**<br>
-    1. 좌측 로그인 영역에서 이메일과 비밀번호를 입력 후 로그인<br>
-    2. 로그인 성공 시 서버에서 Set-Cookie 헤더로 JWT 등이 발송되고, 브라우저에 저장됩니다.<br>
-    3. 로그인 후, 해당 사용자가 참여한 채팅방 목록이 로드되며, 채팅방 선택 시 이전 대화 내역 및 실시간 채팅이 가능합니다.
+    1. 로그인하면 서버가 발급한 JWT 토큰이 쿠키에 저장됩니다.<br>
+    2. 페이지를 새로고침하면 쿠키의 토큰으로 자동 로그인 후 사용자가 참여한 채팅방 목록이 불러와집니다.<br>
+    3. 채팅방 선택 시 이전 대화 내역 및 실시간 채팅이 가능합니다.<br>
+    4. “채팅방 나가기” 버튼을 누르면 시스템 메시지("xxx님이 채팅방을 나갔습니다.")가 전송되고 채팅방이 삭제됩니다.
 </p>
 
 <!-- 로그인 영역 -->
@@ -39,6 +40,7 @@
     <h2>내 채팅방 목록</h2>
     <select id="chatRoomSelect"></select>
     <button onclick="loadChatHistory()">채팅 내역 불러오기</button>
+    <button onclick="leaveChatRoom()">채팅방 나가기</button>
     <div id="roomLog" class="log"></div>
 </div>
 
@@ -57,11 +59,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
 <script>
-    let loggedInEmail = null;
+    // 전역 변수
+    let loggedInUserId = null; // 로그인 API 응답에서 받아온 사용자 ID (숫자)
     let stompClient = null;
     let currentChatRoomId = null;
 
-    // 로그인 처리: 서버의 /api/login 엔드포인트 호출
+    // 로그인 처리
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const email = document.getElementById('email').value;
@@ -70,15 +73,14 @@
             const response = await fetch('http://localhost:9090/public/users/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // 서버가 보낸 쿠키를 저장
+                credentials: 'include', // 서버가 보낸 쿠키 저장
                 body: JSON.stringify({ email, password })
             });
             if (!response.ok) throw new Error("로그인 실패: " + response.status);
             const data = await response.json();
-            // 서버가 반환한 데이터에 email 정보가 있으면 사용, 없으면 입력값 사용
-            loggedInEmail = data.email || email;
-            document.getElementById('loginResult').innerText = "로그인 성공: " + loggedInEmail;
-            // 로그인 성공 후 채팅방 목록 패널 표시
+            loggedInUserId = data.userId;
+            document.getElementById('loginResult').innerText = "로그인 성공: " + data.email;
+            document.getElementById('loginPanel').style.display = 'none';
             document.getElementById('chatRoomPanel').style.display = 'block';
             await loadChatRooms();
         } catch (error) {
@@ -86,10 +88,39 @@
         }
     });
 
-    // 채팅방 목록 로드 함수 (사용자 관련 채팅방 조회)
+    // 자동 로그인 (페이지 로드 시 쿠키에 JWT 토큰이 있으면)
+    async function autoLogin() {
+        const token = getCookie("access");
+        if (token) {
+            try {
+                const response = await fetch('http://localhost:9090/public/users/me', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                if (!response.ok) throw new Error("자동 로그인 실패: " + response.status);
+                const data = await response.json();
+                loggedInUserId = data.userId;
+                document.getElementById('loginResult').innerText = "자동 로그인 성공: " + data.email;
+                document.getElementById('loginPanel').style.display = 'none';
+                document.getElementById('chatRoomPanel').style.display = 'block';
+                await loadChatRooms();
+            } catch (error) {
+                console.error("자동 로그인 오류: ", error);
+            }
+        }
+    }
+
+    // 쿠키에서 특정 키의 값을 가져오는 함수
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    // 채팅방 목록 로드 함수
     async function loadChatRooms() {
         try {
-            const response = await fetch(`http://localhost:9090/chatrooms/user/${loggedInEmail}`, {
+            const response = await fetch(`http://localhost:9090/chatrooms/user/${loggedInUserId}`, {
                 credentials: 'include'
             });
             if (!response.ok) throw new Error("채팅방 불러오기 실패: " + response.status);
@@ -108,7 +139,7 @@
         }
     }
 
-    // 채팅 내역 로드 함수
+    // 채팅 내역 로드 함수 (대화 내역 모두 반환)
     async function loadChatHistory() {
         const select = document.getElementById('chatRoomSelect');
         currentChatRoomId = select.value;
@@ -122,8 +153,10 @@
             const messagesList = document.getElementById('messages');
             messagesList.innerHTML = '';
             messages.forEach(msg => {
+                // 메시지에 타임스탬프도 함께 표시 (createdAt 필드를 이용)
                 const li = document.createElement('li');
-                li.innerText = msg.sender + ": " + msg.content;
+                const timestamp = new Date(msg.createdAt).toLocaleTimeString();
+                li.innerText = `[${timestamp}] ${msg.sender}: ${msg.content}`;
                 messagesList.appendChild(li);
             });
             addChatLog("이전 대화 내역 로드 완료");
@@ -141,13 +174,13 @@
         stompClient.connect({}, function(frame) {
             addChatLog("STOMP 연결 성공: " + frame);
             const subscription = stompClient.subscribe(`/topic/chatrooms/${currentChatRoomId}`, function(message) {
-                console.log("채팅 메시지 수신:", message.body);
-                let displayMessage = message.body;
+                let displayMessage;
                 try {
                     const data = JSON.parse(message.body);
-                    displayMessage = data.sender + ": " + data.content;
+                    const timestamp = new Date(data.createdAt).toLocaleTimeString();
+                    displayMessage = `[${timestamp}] ${data.sender}: ${data.content}`;
                 } catch (e) {
-                    console.log("메시지 포맷 오류:", message.body);
+                    displayMessage = message.body;
                 }
                 const li = document.createElement('li');
                 li.innerText = displayMessage;
@@ -169,8 +202,23 @@
             };
             stompClient.send('/pub/chatroom.sendMessage', {}, JSON.stringify(chatMessage));
             const li = document.createElement('li');
-            li.innerText = "나: " + message;
+            const timestamp = new Date().toLocaleTimeString();
+            li.innerText = `[${timestamp}] 나: ${message}`;
             document.getElementById('messages').appendChild(li);
+        } else {
+            alert("채팅방에 연결되지 않았습니다.");
+        }
+    }
+
+    // 채팅방 나가기 함수: 시스템 메시지 전송 후, 채팅방 삭제 요청
+    function leaveChatRoom() {
+        if (stompClient && currentChatRoomId) {
+            // 채팅방 나가기 요청: 서버에서는 /pub/chat.leave 엔드포인트를 처리하여
+            // "xxx님이 채팅방을 나갔습니다." 시스템 메시지를 전송하고, 채팅방 삭제 (cascade 설정에 따라 관련 메시지들도 삭제)하도록 구현합니다.
+            stompClient.send('/pub/chat.leave', {}, JSON.stringify(currentChatRoomId));
+            // UI에서는 채팅 인터페이스를 숨기고 채팅방 목록을 다시 로드
+            document.getElementById('chatInterface').style.display = 'none';
+            loadChatRooms();
         } else {
             alert("채팅방에 연결되지 않았습니다.");
         }
@@ -185,6 +233,11 @@
         const logDiv = document.getElementById('chatLog');
         logDiv.innerText += message + "\n";
     }
+
+    // 페이지 로드 시 자동 로그인 시도
+    window.onload = function() {
+        autoLogin();
+    };
 </script>
 </body>
 </html>
