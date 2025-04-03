@@ -1,5 +1,7 @@
 package com.trip.planit.User.config;
 
+import com.trip.planit.User.controller.CustomHandshakeInterceptor;
+import com.trip.planit.User.controller.CustomHandshakeHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -8,20 +10,22 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
-public class WebSocketConfig  implements WebSocketMessageBrokerConfigurer {
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // stomp 접속 주소 url = ws://localhost:8080/ws, 프로토콜이 http가 아니다!
-        registry.addEndpoint("/ws") // 연결될 엔드포인트
-                .setAllowedOrigins("*");
+        // 엔드포인트 등록, SockJS fallback 활성화 ** 고쳤어 **
+        registry.addEndpoint("/ws")
+                .setAllowedOrigins("http://localhost:63342")
+                .addInterceptors(new CustomHandshakeInterceptor()) // 인증 정보를 attributes에 저장
+                .setHandshakeHandler(new CustomHandshakeHandler())    // 저장된 principal을 반환하도록 함
+                .withSockJS();
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // 메시지를 구독(수신)하는 요청 엔드포인트
-        registry.enableSimpleBroker("/sub");
-
-        // 메시지를 발행(송신)하는 엔드포인트
-        registry.setApplicationDestinationPrefixes("/pub");
+        registry.enableSimpleBroker("/queue", "/topic");    // 구독 경로
+        registry.setApplicationDestinationPrefixes("/pub");   // 발행 경로
+        registry.setUserDestinationPrefix("/user");           // 사용자 대상 경로
     }
 }

@@ -29,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import static com.trip.planit.User.entity.Role.ROLE_USER;
 
 @Tag(name = "Public User")
 @RestController
@@ -60,7 +61,6 @@ public class PublicUserController {
     @Operation(summary = "언어 설정", description = "사용자가 선택한 언어를 쿠키에 저장")
     public ResponseEntity<String> setLanguage(@RequestParam("language") String language, HttpServletResponse response) {
 
-        // 쿠키 생성: 이름은 "language", 값은 사용자가 선택한 언어 코드
         Cookie languageCookie = new Cookie("language", language.toUpperCase());
         languageCookie.setHttpOnly(true);
         languageCookie.setPath("/");
@@ -73,7 +73,7 @@ public class PublicUserController {
 
     // 회원가입 API - 1단계
     @PostMapping("/register")
-    @Operation(summary = "회원가입 1단계 ㅇ", description = "회원가입 정보를 입력")
+    @Operation(summary = "회원가입 1단계", description = "회원가입 정보를 입력")
     public RegistrationResponse registerUser(@RequestBody RegisterRequest request,
                                              @CookieValue(value = "language", required = false) Language language, HttpServletResponse response) {
 
@@ -198,7 +198,7 @@ public class PublicUserController {
                 .orElse(null);
 
         userService.completeFinalRegistration(request.getEmail(), request.getNickname(), request.getMbti(), request.getGender(), profileImageUrl);
-        jwtService.addAccessTokenCookie(response, request.getEmail());
+        jwtService.addAccessTokenCookie(response, request.getEmail(), ROLE_USER);
         return RegistrationResponse.builder()
                 .build();
     }
@@ -214,7 +214,8 @@ public class PublicUserController {
             // 비밀번호 확인
             if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 // JWT 토큰을 쿠키에 저장 (HttpServletResponse를 통해 Set-Cookie 헤더 설정)
-                jwtService.addAccessTokenCookie(response, user.getEmail());
+                // ****
+                jwtService.addAccessTokenCookie(response, request.getEmail(), ROLE_USER);
                 // 토큰은 쿠키에 저장되므로, 응답 본문에는 사용자 정보만 담아 반환
                 return userService.loginResponse(user);
             } else {
@@ -229,6 +230,7 @@ public class PublicUserController {
                     .platform(null)
                     .gender(null)
                     .language(null)
+                    .userId(null)
                     .build();
         }
     }
