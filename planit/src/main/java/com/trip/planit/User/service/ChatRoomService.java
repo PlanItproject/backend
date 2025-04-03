@@ -45,14 +45,33 @@ public class ChatRoomService {
                 .orElseThrow(() -> new EntityNotFoundException("ChatRoom not found with id: " + chatRoomId));
     }
 
-    // 사용자가 포함된 채팅방 전체 조회 (user1Id 또는 user2Id에 해당)
+    // /** 수정됨 **/ : 사용자가 아직 나가지 않은(활성 상태인) 채팅방 전체 조회
     public List<ChatRoom> getChatRoomsForUser(Long userId) {
-        return chatRoomRepository.findByUser1IdOrUser2Id(userId, userId);
+        return chatRoomRepository.findActiveChatRoomsByUserId(userId);
     }
 
-    // 채팅방 삭제 (채팅방 나가기 시 사용)
+    public void leaveChatRoom(Long chatRoomId, Long userId) {
+        ChatRoom chatRoom = getChatRoomById(chatRoomId);
+        boolean updated = false;
+        if (chatRoom.getUser1Id().equals(userId) && !chatRoom.isUser1Left()) {
+            chatRoom.setUser1Left(true);
+            updated = true;
+        } else if (chatRoom.getUser2Id().equals(userId) && !chatRoom.isUser2Left()) {
+            chatRoom.setUser2Left(true);
+            updated = true;
+        }
+        if (updated) {
+            // 두 사용자 모두 나갔다면 채팅방을 삭제합니다.
+            if (chatRoom.isUser1Left() && chatRoom.isUser2Left()) {
+                chatRoomRepository.delete(chatRoom);
+            } else {
+                chatRoomRepository.save(chatRoom);
+            }
+        }
+    }
+
+    // 채팅방 삭제 (두 사용자가 모두 나갔을 때 사용할 수 있음)
     public void deleteChatRoom(Long chatRoomId) {
         chatRoomRepository.deleteById(chatRoomId);
     }
-
 }

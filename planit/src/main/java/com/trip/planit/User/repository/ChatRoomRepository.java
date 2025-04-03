@@ -19,7 +19,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             "OR (c.user1Id = :userId2 AND c.user2Id = :userId1)")
     Optional<ChatRoom> findChatRoomByUserIds(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
 
-    // 특정 사용자가 참여한 채팅방 전체 조회
-    @Query("SELECT c FROM ChatRoom c WHERE c.user1Id = :userId OR c.user2Id = :userId")
-    List<ChatRoom> findByUserId(@Param("userId") Long userId);
+    // /** 수정됨 **/ : 특정 사용자가 아직 나가지 않은(활성 상태인) 채팅방 전체 조회
+    @Query("SELECT c FROM ChatRoom c WHERE ((c.user1Id = :userId AND c.user1Left = false) OR (c.user2Id = :userId AND c.user2Left = false))")
+    List<ChatRoom> findActiveChatRoomsByUserId(@Param("userId") Long userId);
 }

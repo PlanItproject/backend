@@ -31,6 +31,13 @@ public class ChatRoom {
     @JsonManagedReference
     private List<ChatMessage> messages = new ArrayList<>();
 
+    // /** 수정됨 **/ : 각 사용자가 채팅방을 나갔는지 여부 (false: 아직 남아있음)
+    @Column(name = "user1_left", nullable = false)
+    private boolean user1Left = false;
+
+    @Column(name = "user2_left", nullable = false)
+    private boolean user2Left = false;
+
     public static ChatRoom create() {
         ChatRoom room = new ChatRoom();
         room.setCreatedAt(LocalDateTime.now());
