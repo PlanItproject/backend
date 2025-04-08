@@ -4,11 +4,13 @@ import com.trip.planit.community.post.dto.PostDto;
 import com.trip.planit.community.post.entity.Image;
 import com.trip.planit.community.post.entity.Post;
 import com.trip.planit.community.post.repository.PostRepository;
-import com.trip.planit.common.aws.service.AwsS3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,7 +19,6 @@ import java.util.stream.Collectors;
 public class PostService {
 
     private final PostRepository postRepository;
-    private final AwsS3Service awsS3Service;
 
     // 모든 게시글 조회
     public List<PostDto> getAllPosts() {
@@ -41,7 +42,7 @@ public class PostService {
         if (postDto.getImages() != null && !postDto.getImages().isEmpty()) {
             imageUrls = postDto.getImages().stream()
                     .filter(file -> file != null && !file.isEmpty()) // 유효한 파일만 처리
-                    .map(awsS3Service::uploadImageWithUrl) // S3 업로드 후 URL 반환
+                    .map(this::uploadImageToLocal) // 로컬 업로드 후 URL 반환
                     .collect(Collectors.toList());
         }
 
@@ -49,9 +50,6 @@ public class PostService {
         Post post = postRepository.save(postDto.toEntity(imageUrls));
         return PostDto.fromEntity(post);
     }
-
-
-
 
     public Post updatePost(Long id, PostDto postDto) {
         Post post = postRepository.findById(id)
@@ -77,7 +75,7 @@ public class PostService {
             // 새로 업로드된 이미지 처리
             List<String> imageUrls = postDto.getImages().stream()
                     .filter(file -> file != null && !file.isEmpty())
-                    .map(awsS3Service::uploadImageWithUrl) // S3 업로드
+                    .map(this::uploadImageToLocal) // 로컬 업로드
                     .collect(Collectors.toList());
 
             // 새로운 이미지 URL 리스트를 Post에 저장
@@ -94,12 +92,32 @@ public class PostService {
         return postRepository.save(post);
     }
 
-
     // 게시글 삭제
     public void deletePost(Long id) {
         if (!postRepository.existsById(id)) {
             throw new EntityNotFoundException("해당 게시글이 존재하지 않아 삭제할 수 없습니다.");
         }
         postRepository.deleteById(id);
+    }
+
+    // 로컬 디렉토리에 이미지를 저장하고 URL을 반환하는 메소드
+    private String uploadImageToLocal(MultipartFile file) {
+        try {
+            // 저장할 디렉토리 경로 설정 (예: uploads/ 디렉토리)
+            String uploadDir = "uploads/";
+            String filePath = uploadDir + System.currentTimeMillis() + "_" + file.getOriginalFilename();
+
+            // 디렉토리가 없으면 생성
+            File destFile = new File(filePath);
+            destFile.getParentFile().mkdirs();
+
+            // 파일 저장
+            file.transferTo(destFile);
+
+            // 저장된 파일의 URL 반환
+            return "/images/" + destFile.getName();
+        } catch (Exception e) {
+            throw new RuntimeException("이미지 업로드에 실패하였습니다: " + e.getMessage());
+        }
     }
 }
