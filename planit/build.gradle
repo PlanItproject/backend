@@ -76,8 +76,13 @@ dependencies {
 	// Amadeus Java API
 	implementation 'com.amadeus:amadeus-java:5.7.2'
 
-	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+  // Kafka 관련 의존성
+  implementation 'org.springframework.kafka:spring-kafka'
 
+  // JSON 직렬화를 위한 의존성 (기본적으로 spring-boot-starter-json 포함되어 있음)
+  implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+  implementation 'com.google.firebase:firebase-admin:9.1.1'
 }
 
 tasks.named('test') {
