@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "User")
 @RestController
 @RequestMapping("/users")
+@CrossOrigin
 @RequiredArgsConstructor
 public class UserController {
 
