@@ -1,15 +1,22 @@
 package com.trip.planit.User.service;
 
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.trip.planit.User.config.exception.BadRequestException;
-import com.trip.planit.User.dto.UserProfileResponse;
-import com.trip.planit.User.dto.UserResponse;
+import com.trip.planit.User.config.exception.CustomS3Exception;
+import com.trip.planit.User.dto.DeleteReqeust;
+import com.trip.planit.User.dto.LoginResponse;
 import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.repository.UserRepository;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,12 +51,14 @@ public class UserService {
     }
 
     // 로그인 - response 값
-    public UserResponse loginResponse(User user, String token) {
-        return UserResponse.builder()
-                .token(token)
+    public LoginResponse loginResponse(User user) {
+        return LoginResponse.builder()
+                .email(user.getEmail())
                 .nickname(user.getNickname())
                 .mbti(user.getMbti())
                 .gender(user.getGender())
+                .platform(user.getPlatform())
+                .userId(user.getUserId())
                 .build();
     }
 
@@ -72,72 +81,87 @@ public class UserService {
         return amazonS3.getUrl(bucketName, key).toString();
     }
 
-    // 이미지 업데이트
-    @Transactional
-    public void updateUserProfileImage(Long userId, MultipartFile profileImage) {
-        // 1) DB에서 기존 사용자 조회
+    // S3 삭제 메서드 예시
+    public void deleteFile(String fileUrl) {
+        String key = extractFileName(fileUrl);  // S3 객체 key 추출
+        System.out.println("Deleting S3 object with key: " + key);  // 디버그 로그
+
+        try {
+            amazonS3.deleteObject(new DeleteObjectRequest(bucketName, key));
+        } catch (AmazonServiceException e) {
+            throw new CustomS3Exception("AmazonServiceException: " + e.getErrorMessage(), e);
+        } catch (SdkClientException e) {
+            throw new CustomS3Exception("SdkClientException: " + e.getMessage(), e);
+        }
+    }
+
+    private String extractFileName(String fileUrl) {
+        String httpsPrefix = "https://planitbucket123.s3.amazonaws.com/";
+        String s3Prefix = "s3://planitbucket123/";
+
+        if (fileUrl.startsWith(httpsPrefix)) {
+            return fileUrl.replace(httpsPrefix, "");
+        } else if (fileUrl.startsWith(s3Prefix)) {
+            return fileUrl.replace(s3Prefix, "");
+        }
+
+        // 접두어가 다르면 그대로 반환하거나, 추가 처리를 할 수 있음.
+        return fileUrl;
+    }
+
+    public String getProfileImageUrl(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
-        // 2) 프로필 이미지가 전달된 경우에만 업데이트
-        if (profileImage != null && !profileImage.isEmpty()) {
-            String profileUrl = uploadProfileImage(profileImage);
-            user.setProfile(profileUrl);
-        } else {
-            throw new BadRequestException("Profile image file is missing.");
-        }
+        return user.getProfile();
+    }
 
-        // 3) 변경사항 DB 반영
+    // 업데이트
+    public void updateUserProfileImage(Long userId, String newProfileUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+        user.setProfile(newProfileUrl);
         userRepository.save(user);
     }
 
-    // 이미지 조회
-    @Transactional(readOnly = true)
-    public UserProfileResponse getUserProfile(Long userId) {
-        // DB에서 사용자 조회 (없으면 예외 발생)
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BadRequestException("User not found"));
-
-        // UserProfileResponse DTO에 사용자 정보 매핑
-        return new UserProfileResponse(
-                user.getProfile() // S3에 업로드된 프로필 이미지 URL
-        );
-    }
-
     // 회원가입 1단계 - 임시 회원으로 저장
-    public void saveTemporaryUser(String email, String password, Platform platform) {
-        TemporaryUser temporaryUser = TemporaryUser.builder()
+    public void saveTemporaryUser(String email, String password, Platform platform, Language language) {
+
+        TemporaryUser.TemporaryUserBuilder builder = TemporaryUser.builder()
                 .email(email)
-                .password(passwordEncoder.encode(password))
                 .platform(platform)
-                .build();
+                .language(language);
+
+        // 일반 회원가입인 경우 비밀번호 암호화 후 저장
+        if (password != null && !password.isBlank()) {
+            builder.password(passwordEncoder.encode(password));
+        }
+
+        TemporaryUser temporaryUser = builder.build();
         temporaryUserRepository.save(temporaryUser);
     }
+
 
     // 회원가입 3단계 - 닉네임, MBTI, 성별 입력 및 최종 회원가입 자동 완료
     @Transactional
     public void completeFinalRegistration(String email, String nickname, MBTI mbti, Gender gender, String profile) {
+
         TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
-        // 임시 사용자 정보 업데이트
-        tempUser.setNickname(nickname);
-        tempUser.setMbti(mbti);
-        tempUser.setGender(gender);
 
-        if (profile != null) {
-            tempUser.setProfile(profile);
-        }
-
-        temporaryUserRepository.save(tempUser);
+        // email_verification 테이블에서 해당 임시 사용자와 관련된 모든 레코드를 먼저 삭제
+        emailVerificationRepository.deleteByTemporaryUserId_Email(email);
 
         // 닉네임, MBTI, 성별 입력이 끝났다면 자동으로 최종 회원가입 처리
-        completeRegistration(email);
+        completeRegistration(email, nickname, mbti, gender, profile);
+
+        temporaryUserRepository.delete(tempUser);
     }
 
     // 회원가입 - 최종 회원가입 완료
     @Transactional
-    public void completeRegistration(String email) {
+    public void completeRegistration(String email, String nickname, MBTI mbti, Gender gender, String profile) {
         TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
@@ -146,52 +170,99 @@ public class UserService {
 
         User user = User.builder()
                 .email(tempUser.getEmail())
-                .password(password) // Google 사용자는 null 저장
-                .nickname(tempUser.getNickname())
-                .mbti(tempUser.getMbti())
-                .gender(tempUser.getGender())
+                .password(password)
+                .nickname(nickname)
+                .mbti(mbti)
+                .gender(gender)
                 .platform(tempUser.getPlatform())
-                .profile(tempUser.getProfile())
+                .profile(profile)
                 .createdAt(LocalDateTime.now())
+                .language(tempUser.getLanguage())
+                .role(Role.ROLE_USER)  // 기본 역할 지정
                 .build();
 
         userRepository.save(user);
 
         // 일반 회원가입 사용자의 경우, 이메일 인증 정보 삭제
         if (tempUser.getPlatform() == Platform.APP) {
-            emailVerificationRepository.deleteByTemporaryUserId(tempUser.getId());
+            emailVerificationRepository.deleteByTemporaryUserId_TemporaryUserId(tempUser.getTemporaryUserId());
         }
 
         // 임시 사용자 정보 삭제
         temporaryUserRepository.delete(tempUser);
     }
 
-
-    // 회원가입 - 모든 임시 회원 정보 삭제
-    public void deleteTemporaryUsers() {
-        emailVerificationRepository.deleteAll();
-        temporaryUserRepository.deleteAll();
-    }
-
     @Transactional
-    public void deactivate(Long userId) {
+    public void deactivate(Long userId, DeleteReqeust deleteReqeust) {
+        // "기타"를 선택한 경우 상세 사유 검증
+        if(deleteReqeust.getDeleteReason() == DeleteReason.OTHER &&
+                (deleteReqeust.getDeleteReason_Description() == null || deleteReqeust.getDeleteReason_Description().isEmpty())) {
+            throw new BadRequestException("Please provide a detailed reason when selecting 'Other' as the withdrawal reason.");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
+        user.setDeleteReason(deleteReqeust.getDeleteReason());
+        user.setDeleteReason_Description(deleteReqeust.getDeleteReason_Description());
         user.setActive(false);
+        userRepository.save(user);
 
-        // 예약 시각 : 현재 시간 + 3일 후
-        user.setDeletionScheduledAt(LocalDateTime.now().plusDays(3));
+//        개발 test용 10분 후로 설정.
+        user.setDeletionScheduledAt(LocalDateTime.now().plusMinutes(10));
+
+//        개발 test용 4시간 후로 설정.
+//        user.setDeletionScheduledAt(LocalDateTime.now().plusHours(4));
+
+//        예약 시각 : 현재 시간 + 3일 후
+//        user.setDeletionScheduledAt(LocalDateTime.now().plusDays(3));
     }
 
 
-    @Scheduled(cron = "0 0 * * * *")
+//  @Scheduled(cron = "0 0 * * * *")
+    // 개발 test용 오전 9시로 설정
+    @Scheduled(cron = "0 00 9 * * *")
     @Transactional
     public void deleteUsers() {
         LocalDateTime now = LocalDateTime.now();
         List<User> usersToDelete = userRepository.findByActiveFalseAndDeletionScheduledAtBefore(now);
         if (!usersToDelete.isEmpty()) {
+            for (User user : usersToDelete) {
+                String profileImageUrl = user.getProfile();
+                if (profileImageUrl != null && !profileImageUrl.trim().isEmpty()) {
+                    deleteFile(profileImageUrl);
+                }
+            }
             userRepository.deleteAll(usersToDelete);
         }
+    }
+
+    // 언어 수정
+    @Transactional
+    public void updateUserLanguage(Long userId, Language language) {
+        // 사용자 ID로 사용자 엔티티 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        // 엔티티의 언어 설정 변경
+        user.setLanguage(language);
+
+        // 변경 사항 저장 (Transactional 어노테이션이 있으면 save() 호출 없이도 변경사항이 반영될 수 있음)
+        userRepository.save(user);
+    }
+
+    // email로 사용자 찾기
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
+    // 로그인 된 사용자 정보를 가져옴.
+    public Long getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername(); // 현재 로그인한 사용자의 이메일 가져오기
+            return getUserByEmail(email).getUserId(); // 이메일로 User 조회 후 user_id 반환
+        }
+        throw new BadRequestException("User is not authenticated.");
     }
 }

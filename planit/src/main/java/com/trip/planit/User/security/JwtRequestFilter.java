@@ -1,8 +1,17 @@
 package com.trip.planit.User.security;
 
+import com.trip.planit.User.entity.CookieRule;
+import com.trip.planit.User.entity.Role;
+import io.micrometer.common.lang.NonNull;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -20,57 +29,89 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Qualifier("customUserDetailsService")
     private UserDetailsService userDetailsService;
 
+    private final JwtUtil jwtUtil;
+    private final CookieUtil cookieUtil;
+
     @Autowired
-    private JwtUtil jwtUtil;
+    public JwtRequestFilter(JwtUtil jwtUtil, CookieUtil cookieUtil) {
+        this.jwtUtil = jwtUtil;
+        this.cookieUtil = cookieUtil;
+    }
 
     @Override
-    protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response, jakarta.servlet.FilterChain filterChain) throws jakarta.servlet.ServletException, IOException {
-        final String authorizationHeader = request.getHeader("Authorization");
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
+            throws ServletException, IOException {
 
-        String email = null;
-        String jwt = null;
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            try {
-                email = jwtUtil.extractemail(jwt);
-
-                // 토큰 만료 시간 출력
-                Date expirationDate = jwtUtil.getExpirationDateFromToken(jwt);
-                System.out.println("Token Expiration Date: " + expirationDate);
-
-            } catch (Exception e) {
-                System.out.println("Error extracting login ID from JWT: " + e.getMessage());
+        if (request.getCookies() != null) {
+            System.out.println("수정됨 !! Received Cookies:");
+            for (Cookie cookie : request.getCookies()) {
+                System.out.println("Cookie Name: " + cookie.getName() + ", Value: " + cookie.getValue());
             }
         } else {
-            System.out.println("Authorization Header is either null or does not start with 'Bearer '");
+            System.out.println("수정됨 !! No cookies received in request.");
         }
+
+        String requestURI = request.getRequestURI();
+        if (requestURI.startsWith("/public/users/") ||
+                requestURI.startsWith("/swagger-ui/") ||
+                requestURI.startsWith("/v3/api-docs/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 기존 Authorization 헤더 대신 쿠키에서 JWT 토큰 읽기
+        String jwt = "";
+        if (request.getCookies() != null) {
+            jwt = cookieUtil.resolveTokenFromCookie(request.getCookies(), CookieRule.ACCESS_PREFIX);
+        } else {
+            System.out.println("쿠키가 존재하지 않습니다.");
+        }
+
+        String email = null;
+        if (jwt != null && !jwt.isEmpty()) {
+            try {
+                // 변경 후: extractEmail() 메서드를 사용하여 이메일 추출
+                email = jwtUtil.extractEmail(jwt);
+
+                // 토큰 만료 시간 출력 (디버깅 용도)
+                Date expirationDate = jwtUtil.getExpirationDateFromToken(jwt);
+                System.out.println("Token Expiration Date: " + expirationDate);
+            } catch (Exception e) {
+                System.out.println("JWT에서 로그인 ID 추출 중 에러 발생: " + e.getMessage());
+            }
+        }
+
+        // 로그로 현재 SecurityContext 인증 상태 확인
+        Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("Current Authentication in SecurityContext: " + currentAuth);
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(email);
+                System.out.println("Extracted roles: " + userDetails.getAuthorities());
 
                 if (jwtUtil.validateToken(jwt, userDetails)) {
-                    System.out.println("JWT Token is valid");
+                    System.out.println("JWT 토큰이 유효합니다.");
+                    Role userRole = jwtUtil.extractUserRole(jwt);
+                    System.out.println("Extracted Role from token: " + userRole);
 
-                    UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-                    usernamePasswordAuthenticationToken
-                            .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
-                    System.out.println("User authenticated and security context set");
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    System.out.println("사용자 인증 및 SecurityContext 설정 완료");
                 } else {
-                    System.out.println("JWT Token is invalid");
+                    System.out.println("JWT 토큰이 유효하지 않습니다.");
                 }
             } catch (Exception e) {
-                System.out.println("Error loading UserDetails or validating token: " + e.getMessage());
+                System.out.println("UserDetails 로드 혹은 토큰 검증 중 에러 발생: " + e.getMessage());
             }
         } else {
-            System.out.println("Login ID is null or Authentication is already set");
+            System.out.println("로그인 ID가 null이거나 이미 인증이 설정됨");
         }
 
         filterChain.doFilter(request, response);
-        System.out.println("Filter chain continued");
+        System.out.println("필터 체인 진행됨");
     }
 }
 

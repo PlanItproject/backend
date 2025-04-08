@@ -40,27 +40,27 @@ jobs:
           contains(github.ref, 'developer')
         run: |
           mkdir -p ./src/main/resources
-          echo "${{ secrets.YML }}" > ./src/main/resources/application.yml
+          echo "${{ secrets.YML }}" > planit/src/main/resources/application.yml
         shell: bash
 
       # 5. JWT Secret 추가
       - name: Set JWT Secret
         run: |
-          echo "jwt.secret=${{ secrets.JWT_SECRET }}" >> ./src/main/resources/application.yml
+          echo "jwt.secret=${{ secrets.JWT_SECRET }}" >> planit/src/main/resources/application.yml
         shell: bash
 
       # 6. 환경별 YML 파일 생성 - application-dev.yml
       - name: Create application-dev.yml
         if: contains(github.ref, 'developer')
         run: |
-          echo "${{ secrets.YML_DEV }}" > ./src/main/resources/application-dev.yml
+          echo "${{ secrets.YML_DEV }}" > planit/src/main/resources/application.yml
         shell: bash
 
       # 7. 환경별 YML 파일 생성 - application-prod.yml
       - name: Create application-prod.yml
         if: contains(github.ref, 'main')
         run: |
-          echo "${{ secrets.YML_PROD }}" > ./src/main/resources/application-prod.yml
+          echo "${{ secrets.YML_PROD }}" > planit/src/main/resources/application.yml
         shell: bash
 
       # 8. Gradle 빌드 (테스트 제외)

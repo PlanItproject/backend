@@ -7,16 +7,16 @@ import com.trip.planit.User.entity.Platform;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.sql.Timestamp;
-
 @Getter
 @Builder
-public class UserResponse {
-    private String token;
+public class LoginResponse {
     private String nickname;
     private String email;
     private MBTI mbti;
     private Platform platform;
     private Gender gender;
     private Language language;
+
+    // 채팅방
+    private Long userId;
 }

@@ -9,4 +9,8 @@ import lombok.Getter;
 @AllArgsConstructor
 public class UserProfileResponse {
     private String profileImageUrl;
+
+    public boolean isEmpty() {
+        return profileImageUrl == null || profileImageUrl.trim().isEmpty();
+    }
 }
