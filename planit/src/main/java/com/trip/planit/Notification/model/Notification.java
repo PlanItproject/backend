@@ -11,7 +11,6 @@ public class Notification {
     private LocalDateTime createdAt;
     private boolean isRead;
     private NotificationType type;
-
     private NotificationSender sender;
 
     public Notification(String message, NotificationType type, NotificationSender sender) {

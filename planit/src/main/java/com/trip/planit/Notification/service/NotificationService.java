@@ -27,7 +27,7 @@ public class NotificationService {
         String key = "notification:" + userId + ":chat";
         if (redisDuplicateChecker.isDuplicate(key)) return;
 
-        NotificationSender sender = new CompositeNotificationSender(new NotificationSender[] {
+        NotificationSender sender = new CompositeNotificationSender(new NotificationSender[]{
                 new FcmNotificationSender(firebaseMessaging),
                 new ChatNotificationSender(kafkaTemplate)
         });
@@ -41,7 +41,7 @@ public class NotificationService {
         String key = "notification:" + userId + ":reply";
         if (redisDuplicateChecker.isDuplicate(key)) return;
 
-        NotificationSender sender = new CompositeNotificationSender(new NotificationSender[] {
+        NotificationSender sender = new CompositeNotificationSender(new NotificationSender[]{
                 new FcmNotificationSender(firebaseMessaging),
                 new ReplyNotification(redisTemplate)
         });
@@ -49,11 +49,5 @@ public class NotificationService {
         Notification notification = new Notification(message, NotificationType.REPLY, sender);
         notification.send();
         redisDuplicateChecker.markAsSent(key, Duration.ofMinutes(5));
-    }
-
-    public void sendFcmNotification(String message) {
-        NotificationSender sender = new FcmNotificationSender(firebaseMessaging);
-        Notification notification = new Notification(message, NotificationType.BASIC, sender);
-        notification.send();
     }
 }

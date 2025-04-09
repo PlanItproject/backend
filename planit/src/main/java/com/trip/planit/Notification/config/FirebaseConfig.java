@@ -17,7 +17,6 @@ public class FirebaseConfig {
     @Bean
     public FirebaseMessaging firebaseMessaging() {
         try {
-            // resources/firebase/planit-firebase.json 경로에 파일이 있어야 함
             ClassPathResource resource = new ClassPathResource("firebase/planit2025.json");
             InputStream serviceAccount = resource.getInputStream();
 
@@ -25,7 +24,6 @@ public class FirebaseConfig {
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                     .build();
 
-            // FirebaseApp은 한 번만 초기화되어야 합니다.
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseApp.initializeApp(options);
             }

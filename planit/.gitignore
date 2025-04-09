@@ -37,3 +37,4 @@ out/
 .vscode/
 /src/main/resources/application.yml
 /env-file.env
+/src/main/resources/firebase/planit2025.json

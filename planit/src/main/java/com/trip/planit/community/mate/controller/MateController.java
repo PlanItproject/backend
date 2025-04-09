@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
+@CrossOrigin
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/mate")
