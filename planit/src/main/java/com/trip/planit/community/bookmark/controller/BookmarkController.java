@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/bookmark")
 @RequiredArgsConstructor
@@ -20,14 +21,14 @@ public class BookmarkController {
         return bookmarkService.getSavedPosts(username);
     }
 
-    // 2. 북마크 추가 (Post or MatePost)
-    @PostMapping
-    public String addBookmark(
-            @RequestParam String username,
-            @RequestParam Long postId,
-            @RequestParam boolean isMatePost) {
-        return bookmarkService.addBookmark(username, postId, isMatePost);
-    }
+//    // 2. 북마크 추가 (Post or MatePost)
+//    @PostMapping
+//    public String addBookmark(
+//            @RequestParam String username,
+//            @RequestParam Long postId,
+//            @RequestParam boolean isMatePost) {
+//        return bookmarkService.addBookmark(username, postId, isMatePost);
+//    }
 
     // 3. 북마크 삭제
     @DeleteMapping("/{savedPostId}")
