@@ -23,7 +23,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -32,6 +31,7 @@ import java.util.Optional;
 import static com.trip.planit.User.entity.Role.ROLE_USER;
 
 @Tag(name = "Public User")
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 @RestController
 @RequestMapping("/public/users")
 public class PublicUserController {
@@ -72,58 +72,51 @@ public class PublicUserController {
     }
 
     // 회원가입 API - 1단계
-    @PostMapping("/register")
-    @Operation(summary = "회원가입 1단계", description = "회원가입 정보를 입력")
-    public RegistrationResponse registerUser(@RequestBody RegisterRequest request,
-                                             @CookieValue(value = "language", required = false) Language language, HttpServletResponse response) {
+    // 일반 회원가입 - 1단계
+    @PostMapping("/register/app")
+    @Operation(summary = "일반 회원가입 - 1단계", description = "이메일, 비밀번호, 이름, 휴대폰번호로 임시 회원 저장")
+    public RegistrationResponse registerAppUser(@RequestBody RegisterAppRequest request,
+                                                @CookieValue(value = "language", required = false) Language language) {
 
-        // 일반 -> platform = APP 자동 설정
-        Platform platform = Platform.APP;
-
-        String email = request.getEmail();
-
-        if (Boolean.TRUE.equals(request.isGoogleLogin())) {
-            platform = Platform.GOOGLE;
-
-            // OAuth2 인증이 완료된 상태에서 SecurityContext에서 이메일 정보를 가져옴
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-            if (auth == null || !auth.isAuthenticated() || !(auth.getPrincipal() instanceof OAuth2User oauth2User)) {
-                throw new BadRequestException("Invalid OAuth2 authentication.");
-            }
-
-            request.setEmail((String) oauth2User.getAttributes().get("email"));
-            email = request.getEmail();
-
-            if (email == null || email.isBlank()) {
-                throw new BadRequestException("Google account email could not be found.");
-            }
-
-            // Google 로그인 - OAuth에서 이메일 자동 적용
-            userService.saveTemporaryUser(email, null, platform, language);
-
-            return RegistrationResponse.builder()
-                    .googleLogin(true)
-                    .language(language)
-                    .build();
-        } else {
-            if (email == null || email.isBlank()) {
-                throw new BadRequestException("Email could not be found.");
-            }
-
-            String password = request.getPassword();
-
-            if (password == null || password.isBlank()) {
-                throw new BadRequestException("Password could not be found.");
-            }
-
-            userService.saveTemporaryUser(email, password, platform, language);
-
-            return RegistrationResponse.builder()
-                    .googleLogin(false)
-                    .language(language)
-                    .build();
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
+            throw new BadRequestException("Email is required.");
         }
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new BadRequestException("Password is required.");
+        }
+
+        userService.saveTemporaryUser(request.getEmail(), request.getPassword(), Platform.APP, language);
+
+        return RegistrationResponse.builder()
+                .googleLogin(false)
+                .language(language)
+                .build();
+    }
+
+    // 구글 회원가입 - 1단계
+    @PostMapping("/register/google")
+    @Operation(summary = "구글 회원가입 - 1단계", description = "OAuth 인증 완료된 이메일로 임시 회원 저장")
+    public RegistrationResponse registerGoogleUser(@RequestBody RegisterGoogleRequest request,
+                                                   @CookieValue(value = "language", required = false) Language language) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || !auth.isAuthenticated() || !(auth.getPrincipal() instanceof OAuth2User oauth2User)) {
+            throw new BadRequestException("Invalid OAuth2 authentication.");
+        }
+
+        String email = (String) oauth2User.getAttributes().get("email");
+
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException("Email not found from Google login.");
+        }
+
+        userService.saveTemporaryUser(email, null, Platform.GOOGLE, language);
+
+        return RegistrationResponse.builder()
+                .googleLogin(true)
+                .language(language)
+                .build();
     }
 
     @PostMapping("/email/send")

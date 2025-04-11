@@ -2,6 +2,8 @@ package com.trip.planit.User.security;
 
 import com.trip.planit.User.entity.CookieRule;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -15,5 +17,29 @@ public class CookieUtil {
                 .findFirst()
                 .map(Cookie::getValue)
                 .orElse("");
+    }
+
+    public void addJwtCookie(HttpServletResponse response, String name, String token, boolean secure) {
+        ResponseCookie cookie = ResponseCookie.from(name, token)
+                .httpOnly(true)
+                .secure(secure)
+                .path("/")
+                .sameSite("None")
+                .maxAge(86400) // 1일
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
+    }
+
+    public void clearJwtCookie(HttpServletResponse response, String name, boolean secure) {
+        ResponseCookie cookie = ResponseCookie.from(name, "")
+                .httpOnly(true)
+                .secure(secure)
+                .path("/")
+                .sameSite("None")
+                .maxAge(0)
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 }
