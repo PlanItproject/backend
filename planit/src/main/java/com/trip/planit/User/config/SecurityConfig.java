@@ -68,7 +68,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // 허용할 Origin 목록 설정
-        configuration.setAllowedOrigins(List.of("http://localhost:9090", "http://13.124.18.96:9090", "http://localhost:63342"));
+        configuration.setAllowedOrigins(List.of("http://localhost:9090",
+                "http://13.124.18.96:9090",
+                "http://localhost:63342",
+                "http://localhost:5173",
+                "http://3.107.59.166:9090"
+        ));
         // 허용할 HTTP 메서드 설정
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         // 모든 헤더 허용
