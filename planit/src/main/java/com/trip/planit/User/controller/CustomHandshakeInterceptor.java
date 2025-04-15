@@ -22,7 +22,7 @@ public class CustomHandshakeInterceptor implements HandshakeInterceptor {
             // SecurityContext에 저장된 인증 정보를 가져옴
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication != null && authentication.isAuthenticated()) {
-                // 인증된 Principal을 attributes에 저장 (나중에 WebSocketSession에서 사용할 수 있음)
+                // 인증된 Principal을 attributes에 저장
                 attributes.put("principal", authentication.getPrincipal());
             }
         }
@@ -37,6 +37,5 @@ public class CustomHandshakeInterceptor implements HandshakeInterceptor {
         } else {
             System.out.println("WebSocket handshake 성공");
         }
-        // 후처리: 여기서 추가 작업(예: 세션 정보 기록 등)을 할 수 있습니다.
     }
 }

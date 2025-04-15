@@ -35,7 +35,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         System.out.println("Configuring SecurityFilterChain...");
-        // **고쳤어**: CSRF 비활성화 (stateless JWT 기반이므로)
+        // CSRF 비활성화 (stateless JWT 기반이므로)
         http.csrf(csrf -> csrf.disable());
 
         http
@@ -46,7 +46,7 @@ public class SecurityConfig {
             // URL별 접근 권한 설정
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        // **고쳤어**: WebSocket 엔드포인트(/ws/**)도 모두 허용
+                        // WebSocket 엔드포인트(/ws/**)도 모두 허용
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/user/**", "/chatrooms/**").hasAnyRole("USER", "ADMIN")

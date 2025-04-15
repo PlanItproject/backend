@@ -8,10 +8,10 @@ import java.util.List;
 
 public class WebConfig implements WebMvcConfigurer {
 
-    // 추가: 커스텀 Multipart 메시지 컨버터를 주입받음
+    // 커스텀 Multipart 메시지 컨버터를 주입받음
     private final MultipartJackson2HttpMessageConverter multipartConverter;
 
-    // 추가: 생성자 주입을 통해 빈을 받아옴
+    // 생성자 주입을 통해 빈을 받아옴
     public WebConfig(MultipartJackson2HttpMessageConverter multipartConverter) {
         this.multipartConverter = multipartConverter;
     }
@@ -26,7 +26,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .maxAge(3600);
     }
 
-    // 추가: extendMessageConverters를 오버라이드하여 커스텀 컨버터를 등록함
+    // extendMessageConverters를 오버라이드하여 커스텀 컨버터를 등록함
     @Override
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
         // 커스텀 컨버터를 가장 앞에 추가하여 우선순위를 높임

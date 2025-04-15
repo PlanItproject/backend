@@ -63,9 +63,6 @@ public class JwtUtil {
     public Role extractUserRole(String token) {
         Claims claims = extractAllClaims(token);
         String roleFromToken = (String) claims.get("role"); // 예: "ROLE_USER"
-//        if (roleFromToken != null && roleFromToken.startsWith("ROLE_")) {
-//            roleFromToken = roleFromToken.substring(5); // "USER"로 변환
-//        }
         System.out.println("Extracted Role from token: " + roleFromToken);
         return Role.valueOf(roleFromToken);
     }
