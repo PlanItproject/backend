@@ -64,14 +64,13 @@ public class PublicUserController {
         Cookie languageCookie = new Cookie("language", language.toUpperCase());
         languageCookie.setHttpOnly(true);
         languageCookie.setPath("/");
-        languageCookie.setMaxAge(7 * 24 * 60 * 60); // 예: 7일간 유지
+        languageCookie.setMaxAge(7 * 24 * 60 * 60); // 7일 유지
 
         response.addCookie(languageCookie);
 
         return ResponseEntity.ok("Language cookie set to " + language.toUpperCase());
     }
 
-    // 회원가입 API - 1단계
     // 일반 회원가입 - 1단계
     @PostMapping("/register/app")
     @Operation(summary = "일반 회원가입 - 1단계", description = "이메일, 비밀번호, 이름, 휴대폰번호로 임시 회원 저장")
@@ -119,6 +118,7 @@ public class PublicUserController {
                 .build();
     }
 
+    // 회원가입 API - 2단계
     @PostMapping("/email/send")
     @Operation(summary = "회원가입 - 2단계 이메일 전송", description = "이메일 전송하기")
     public ResponseEntity<String> sendEmail(@RequestParam String email) {
@@ -138,7 +138,7 @@ public class PublicUserController {
                 .orElseThrow(() -> new BadRequestException("Temporary user not found."));
 
         // 재시도 횟수가 5번 이상인 경우 예외 발생
-        if (tempUser.getFailedAttempts() >= MAX_ATTEMPTS) { // 분리된 메서드를 호출
+        if (tempUser.getFailedAttempts() >= MAX_ATTEMPTS) {
             emailService.checkFailedAttempts(tempUser.getFailedAttempts());
         }
 
@@ -206,10 +206,7 @@ public class PublicUserController {
 
             // 비밀번호 확인
             if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                // JWT 토큰을 쿠키에 저장 (HttpServletResponse를 통해 Set-Cookie 헤더 설정)
-                // ****
                 jwtService.addAccessTokenCookie(response, request.getEmail(), ROLE_USER);
-                // 토큰은 쿠키에 저장되므로, 응답 본문에는 사용자 정보만 담아 반환
                 return userService.loginResponse(user);
             } else {
                 throw new IllegalArgumentException("Invalid email or password.");

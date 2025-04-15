@@ -14,7 +14,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // 엔드포인트 등록, SockJS fallback 활성화 ** 고쳤어 **
+        // 엔드포인트 등록, SockJS fallback 활성화
         registry.addEndpoint("/ws")
                 .setAllowedOrigins("http://localhost:63342")
                 .addInterceptors(new CustomHandshakeInterceptor()) // 인증 정보를 attributes에 저장

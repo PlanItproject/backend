@@ -45,7 +45,7 @@ public class ChatRoomService {
                 .orElseThrow(() -> new EntityNotFoundException("ChatRoom not found with id: " + chatRoomId));
     }
 
-    // /** 수정됨 **/ : 사용자가 아직 나가지 않은(활성 상태인) 채팅방 전체 조회
+    // 사용자가 아직 나가지 않은(활성 상태인) 채팅방 전체 조회
     public List<ChatRoom> getChatRoomsForUser(Long userId) {
         return chatRoomRepository.findActiveChatRoomsByUserId(userId);
     }
