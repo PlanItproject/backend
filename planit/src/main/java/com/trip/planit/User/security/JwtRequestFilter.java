@@ -62,7 +62,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         // 기존 Authorization 헤더 대신 쿠키에서 JWT 토큰 읽기
         String jwt = "";
         if (request.getCookies() != null) {
-            jwt = cookieUtil.resolveTokenFromCookie(request.getCookies(), CookieRule.ACCESS_PREFIX);
+            jwt = cookieUtil.resolveTokenFromCookie(request.getCookies(), CookieRule.ACCESS_TOKEN_NAME);
         } else {
             System.out.println("쿠키가 존재하지 않습니다.");
         }

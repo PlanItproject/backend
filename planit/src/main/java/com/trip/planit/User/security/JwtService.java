@@ -31,7 +31,7 @@ public class JwtService {
     }
 
     public void clearAccessTokenCookie(HttpServletResponse response) {
-        ResponseCookie expiredCookie = ResponseCookie.from(CookieRule.ACCESS_PREFIX.getValue(), "")
+        ResponseCookie expiredCookie = ResponseCookie.from(CookieRule.ACCESS_TOKEN_NAME.getValue(), "")
                 .httpOnly(true)
                 .secure(false) // 개발환경
                 .path("/")
