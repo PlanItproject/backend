@@ -24,21 +24,14 @@ public class JwtService {
     public void addAccessTokenCookie(HttpServletResponse response, String userEmail, Role role) {
         String token = jwtUtil.generateToken(userEmail, role);
 
-        ResponseCookie cookie = ResponseCookie.from(CookieRule.ACCESS_PREFIX.getValue(), token)
-                .httpOnly(true)
-                .secure(false) // 개발환경에서는 false, 배포 시 true
-                .path("/")
-                .sameSite("None") // 크로스 도메인 허용
-                .maxAge(ACCESS_TOKEN_EXPIRATION_SECONDS)
-                .build();
+        response.setHeader("Set-Cookie",
+            "accessToken=" + token + "; Path=/; Max-Age=86400; HttpOnly; SameSite=None; Secure");
 
-        response.addHeader("Set-Cookie", cookie.toString());
-
-        System.out.println("JwtService.addAccessTokenCookie: Set-Cookie = " + cookie.toString());
+        System.out.println("JwtService.addAccessTokenCookie: Set-Cookie = accessToken=" + token + "; Path=/; Max-Age=86400; HttpOnly; SameSite=None; Secure");
     }
 
     public void clearAccessTokenCookie(HttpServletResponse response) {
-        ResponseCookie expiredCookie = ResponseCookie.from(CookieRule.ACCESS_PREFIX.getValue(), "")
+        ResponseCookie expiredCookie = ResponseCookie.from(CookieRule.ACCESS_TOKEN_NAME.getValue(), "")
                 .httpOnly(true)
                 .secure(false) // 개발환경
                 .path("/")

@@ -233,15 +233,19 @@ public class PublicUserController {
     @Operation(summary = "언어 변경", description = "언어 변경")
     public ResponseEntity<String> updateLanguage(@RequestParam Language language, HttpServletResponse response) {
 
+        // 1. 쿠키에 저장 (항상 수행)
         Cookie languageCookie = new Cookie("language", language.name());
         languageCookie.setPath("/");
         languageCookie.setHttpOnly(true);
         languageCookie.setMaxAge(7 * 24 * 60 * 60);
-
         response.addCookie(languageCookie);
 
-        Long userId = userService.getAuthenticatedUserId();
-        userService.updateUserLanguage(userId, language);
+        // 2. 로그인 상태라면 DB 업데이트도 수행
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            Long userId = userService.getAuthenticatedUserId();
+            userService.updateUserLanguage(userId, language);
+        }
 
         return ResponseEntity.ok("Language updated successfully");
     }
