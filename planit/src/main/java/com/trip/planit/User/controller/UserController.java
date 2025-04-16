@@ -1,5 +1,8 @@
 package com.trip.planit.User.controller;
 
+import com.trip.planit.User.apiPayload.code.status.ErrorStatus;
+import com.trip.planit.User.apiPayload.exception.ApiResponse;
+import com.trip.planit.User.apiPayload.exception.GeneralException;
 import com.trip.planit.User.config.exception.BadRequestException;
 import com.trip.planit.User.dto.DeleteReqeust;
 import com.trip.planit.User.security.JwtService;
@@ -33,7 +36,7 @@ public class UserController {
     // 프로필 사진 수정
     @PutMapping(value = "/profile/change", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "프로필 사진 수정", description = "기존 프로필 사진을 새로운 이미지로 교체")
-    public ResponseEntity<String> updateProfileImage(
+    public ResponseEntity<ApiResponse<String>> updateProfileImage(
             @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestPart("newProfileImage") MultipartFile newProfileImage
     ) {
@@ -52,20 +55,20 @@ public class UserController {
         // 5) 사용자 프로필 업데이트
         userService.updateUserProfileImage(userId, newProfileUrl);
 
-        return ResponseEntity.ok("Profile image updated successfully.");
+        return ResponseEntity.ok(ApiResponse.onSuccess("Profile image updated successfully."));
     }
 
     // 프로필 삭제
     @DeleteMapping("/profile/delete")
     @Operation(summary = "프로필 사진 삭제", description = "현재 프로필 사진을 삭제")
-    public ResponseEntity<String> deleteProfileImage() {
+    public ResponseEntity<ApiResponse<String>> deleteProfileImage() {
         Long userId = userService.getAuthenticatedUserId();
 
         // 현재 저장된 프로필 이미지 URL 가져오기
         String existingProfileUrl = userService.getProfileImageUrl(userId);
 
         if (existingProfileUrl == null || existingProfileUrl.isEmpty()) {
-            return ResponseEntity.badRequest().body("No profile image to delete.");
+            throw new GeneralException(ErrorStatus.BAD_REQUEST_CUSTOM);
         }
 
         // S3에서 기존 프로필 이미지 삭제
@@ -74,7 +77,7 @@ public class UserController {
         // 사용자 프로필 정보 업데이트 (프로필 이미지를 NULL로 설정)
         userService.updateUserProfileImage(userId, null);
 
-        return ResponseEntity.ok("Profile image deleted successfully.");
+        return ResponseEntity.ok(ApiResponse.onSuccess("Profile image deleted successfully."));
     }
 
 
@@ -90,16 +93,16 @@ public class UserController {
     // 회원탈퇴
     @DeleteMapping("/user/delete")
     @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자의 계정을 삭제 - 비활성화")
-    public ResponseEntity<String> deleteUser(@RequestBody DeleteReqeust deleteReqeust, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<String>> deleteUser(@RequestBody DeleteReqeust deleteReqeust, HttpServletResponse response) {
         try {
             Long userId = userService.getAuthenticatedUserId(); // 현재 로그인한 사용자 ID 가져오기
             userService.deactivate(userId, deleteReqeust);
             jwtService.clearAccessTokenCookie(response);
-            return ResponseEntity.ok("User deleted successfully.");
+            return ResponseEntity.ok(ApiResponse.onSuccess("User deleted successfully."));
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
-            throw new BadRequestException("An error occurred while deleting the user.");
+            throw new GeneralException(ErrorStatus.INTERNAL_SERVER_ERROR_CUSTOM);
         }
     }
 }
