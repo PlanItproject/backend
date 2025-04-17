@@ -32,6 +32,17 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
   @ExceptionHandler
   public ResponseEntity<Object> validation(ConstraintViolationException e, WebRequest request) {
 
+    // Swagger 요청인지 체크
+    if (request instanceof ServletWebRequest servletRequest) {
+      String uri = servletRequest.getRequest().getRequestURI();
+      log.info("[ExceptionAdvice] 예외 발생 요청 URI: {}", uri);
+
+      if (uri.contains("/swagger") || uri.contains("/v3/api-docs")) {
+        log.info("[ExceptionAdvice] Swagger 요청이므로 예외 처리 생략");
+        return null;  // 또는 ResponseEntity.ok().build();
+      }
+    }
+
     String errorMessage = e.getConstraintViolations().stream()
         .map(constraintViolation -> constraintViolation.getMessage())
         .findFirst()
