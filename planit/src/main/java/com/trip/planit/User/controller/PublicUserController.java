@@ -1,6 +1,8 @@
 package com.trip.planit.User.controller;
 
+import com.trip.planit.User.apiPayload.code.ReasonDTO;
 import com.trip.planit.User.apiPayload.code.status.ErrorStatus;
+import com.trip.planit.User.apiPayload.code.status.SuccessStatus;
 import com.trip.planit.User.apiPayload.exception.ApiResponse;
 import com.trip.planit.User.apiPayload.exception.GeneralException;
 import com.trip.planit.User.config.exception.InternalServerErrorException;
@@ -77,7 +79,7 @@ public class PublicUserController {
     // 일반 회원가입 - 1단계
     @PostMapping("/register/app")
     @Operation(summary = "일반 회원가입 - 1단계", description = "이메일, 비밀번호, 이름, 휴대폰번호로 임시 회원 저장")
-    public RegistrationResponse registerAppUser(@RequestBody RegisterAppRequest request,
+    public ResponseEntity<ReasonDTO> registerAppUser(@RequestBody RegisterAppRequest request,
                                                 @CookieValue(value = "language", required = false) Language language) {
 
         if (request.getEmail() == null || request.getEmail().isBlank()) {
@@ -97,10 +99,9 @@ public class PublicUserController {
 
         userService.saveTemporaryUser(request.getEmail(), request.getPassword(), Platform.APP, language);
 
-        return RegistrationResponse.builder()
-                .googleLogin(false)
-                .language(language)
-                .build();
+        return ResponseEntity
+            .status(SuccessStatus._OK.getHttpStatus())
+            .body(SuccessStatus._OK.getReason());
     }
 
     // 구글 회원가입 - 1단계
@@ -189,22 +190,29 @@ public class PublicUserController {
     // 회원가입 4단계
     @PostMapping(value = "/register/final", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "회원가입 4단계 - 추가 정보 입력", description = "닉네임, MBTI, 성별, 프로필 사진 입력 후 최종 회원가입 완료")
-    public RegistrationResponse completeRegistration(
+    public ResponseEntity<ReasonDTO> completeRegistration(
             @Parameter(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE))
             @RequestPart(value = "data") RegisterFinalRequest request,
             @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
             @RequestPart(value = "profile", required = false) MultipartFile profile,
             HttpServletResponse response) {
 
+        // 1. 프로필 사진 업로드
         String profileImageUrl = Optional.ofNullable(profile)
                 .filter(p -> !p.isEmpty())
                 .map(userService::uploadProfileImage)
                 .orElse(null);
 
+        // 2. 최종 회원가입
         userService.completeFinalRegistration(request.getEmail(), request.getNickname(), request.getMbti(), request.getGender(), profileImageUrl);
+
+        // 3. JWT 쿠키 추가
         jwtService.addAccessTokenCookie(response, request.getEmail(), ROLE_USER);
-        return RegistrationResponse.builder()
-                .build();
+
+
+        return ResponseEntity
+            .status(SuccessStatus._OK.getHttpStatus())
+            .body(SuccessStatus._OK.getReason());
     }
 
     // 일반 로그인
