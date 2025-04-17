@@ -193,7 +193,7 @@ public class PublicUserController {
             @Parameter(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE))
             @RequestPart(value = "data") RegisterFinalRequest request,
             @Parameter(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE))
-            @RequestPart(value = "profile") MultipartFile profile,
+            @RequestPart(value = "profile", required = false) MultipartFile profile,
             HttpServletResponse response) {
 
         String profileImageUrl = Optional.ofNullable(profile)
