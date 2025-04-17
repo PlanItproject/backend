@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @OpenAPIDefinition(
-        info = @Info(title = "PlanIt", version = "v1"),
+        info = @Info(title = "PlanIt", version = "v3"),
         servers = @Server(url = "/", description = "서버 URL"),
         security = {
                 @SecurityRequirement(name = "Language_cookieAuth"),
@@ -52,7 +52,7 @@ public class SwaggerConfig {
     @Bean
     public GroupedOpenApi SwaggerOpenApi() {
         return GroupedOpenApi.builder()
-                .group("PlanIt API v1")
+                .group("PlanIt API v3")
                 .pathsToMatch("/**")
                 .build();
     }
