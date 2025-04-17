@@ -1,5 +1,7 @@
 package com.trip.planit.User.controller;
 
+import com.trip.planit.User.apiPayload.code.status.ErrorStatus;
+import com.trip.planit.User.apiPayload.exception.GeneralException;
 import com.trip.planit.User.entity.ChatMessage;
 import com.trip.planit.User.entity.ChatRoom;
 import com.trip.planit.User.entity.MessageType;
@@ -42,17 +44,16 @@ public class ChatController {
     @MessageMapping("/chat.sendPrivateMessage")
     public void sendPrivateMessage(ChatMessage chatMessage, Principal principal) {
         if (principal == null) {
-            System.err.println("전송 실패: 인증된 사용자 정보(Principal)가 없습니다.");
-            return;
+            throw new GeneralException(ErrorStatus.NOT_AUTHENTICATED);
         }
 
         String senderEmail = principal.getName();
         chatMessage.setSender(senderEmail);
 
         User sender = userRepository.findByEmail(senderEmail)
-            .orElseThrow(() -> new RuntimeException("Sender not found: " + senderEmail));
+            .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
         User receiver = userRepository.findByEmail(chatMessage.getReceiver())
-            .orElseThrow(() -> new RuntimeException("Receiver not found: " + chatMessage.getReceiver()));
+            .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
 
         ChatRoom chatRoom = chatRoomService.createChatRoom(sender, receiver);
         chatMessage.setChatRoom(chatRoom);
@@ -69,8 +70,7 @@ public class ChatController {
     @MessageMapping("/chat.start")
     public void sendChatStartNotification(@Payload Long chatRoomId, Principal principal) {
         if (principal == null) {
-            System.err.println("채팅 시작 시스템 메시지 전송 실패: 인증된 사용자 정보(Principal)가 없습니다.");
-            return;
+            throw new GeneralException(ErrorStatus.NOT_AUTHENTICATED);
         }
         ChatRoom chatRoom = chatRoomService.getChatRoomById(chatRoomId);
 
@@ -105,12 +105,11 @@ public class ChatController {
     @MessageMapping("/chat.leave")
     public void sendChatLeaveNotification(@Payload Long chatRoomId, Principal principal) {
         if (principal == null) {
-            System.err.println("채팅 나가기 처리 실패: 인증된 사용자 정보(Principal)가 없습니다.");
-            return;
+            throw new GeneralException(ErrorStatus.NOT_AUTHENTICATED);
         }
         String userEmail = principal.getName();
         User currentUser = userRepository.findByEmail(userEmail)
-            .orElseThrow(() -> new RuntimeException("User not found: " + userEmail));
+            .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
         Long userId = currentUser.getUserId();
 
         // leaveChatRoom 메서드를 호출하여 해당 사용자의 leave 상태만 업데이트합니다.

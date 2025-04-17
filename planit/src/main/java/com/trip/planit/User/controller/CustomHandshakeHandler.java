@@ -1,5 +1,7 @@
 package com.trip.planit.User.controller;
 
+import com.trip.planit.User.apiPayload.code.status.ErrorStatus;
+import com.trip.planit.User.apiPayload.exception.GeneralException;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
@@ -17,6 +19,6 @@ public class CustomHandshakeHandler extends DefaultHandshakeHandler {
             return (Principal) principal;
         }
         // 인증 정보가 없으면 null 반환
-        return null;
+        throw new GeneralException(ErrorStatus.NOT_AUTHENTICATED);
     }
 }

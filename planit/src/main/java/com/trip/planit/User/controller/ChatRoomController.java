@@ -1,5 +1,7 @@
 package com.trip.planit.User.controller;
 
+import com.trip.planit.User.apiPayload.code.status.ErrorStatus;
+import com.trip.planit.User.apiPayload.exception.GeneralException;
 import com.trip.planit.User.dto.ChatRequest;
 import com.trip.planit.User.dto.ChatResponse;
 import com.trip.planit.User.entity.ChatMessage;
@@ -40,9 +42,9 @@ public class ChatRoomController {
         System.out.println("Received ChatRequest: " + chatRequest);
 
         User roomMaker = userRepository.findByUserId(chatRequest.getRoomMakerId())
-            .orElseThrow(() -> new RuntimeException("User not found: " + chatRequest.getRoomMakerId()));
+            .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
         User guest = userRepository.findByUserId(chatRequest.getGuestId())
-            .orElseThrow(() -> new RuntimeException("User not found: " + chatRequest.getGuestId()));
+            .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
 
         ChatRoom chatRoom = chatRoomService.createChatRoom(roomMaker, guest);
 
@@ -132,6 +134,6 @@ public class ChatRoomController {
     // 채팅방 ID로 조회 (내부 사용)
     public ChatRoom getChatRoomById(Long chatRoomId) {
         return chatroomRepository.findById(chatRoomId)
-                .orElseThrow(() -> new RuntimeException("Chat room not found: " + chatRoomId));
+            .orElseThrow(() -> new GeneralException(ErrorStatus.NOT_FOUND_CUSTOM));
     }
 }
