@@ -10,26 +10,27 @@ import com.trip.planit.User.apiPayload.code.ReasonDTO;
 @AllArgsConstructor
 public enum SuccessStatus implements BaseCode {
 
-  _OK(HttpStatus.OK, "COMMON200", "성공입니다.");
+  _OK(HttpStatus.OK, "성공입니다.");
 
   private final HttpStatus httpStatus;
-  private final String code;
   private final String message;
 
   @Override
   public ReasonDTO getReason() {
     return ReasonDTO.builder()
-        .message(message)
         .status(httpStatus.value())
         .isSuccess(true)
+        .message(message)
+        .httpStatus(httpStatus)
         .build();
   }
 
   @Override
   public ReasonDTO getReasonHttpStatus() {
     return ReasonDTO.builder()
-        .message(message)
+        .status(httpStatus.value())
         .isSuccess(true)
+        .message(message)
         .httpStatus(httpStatus)
         .build();
   }
