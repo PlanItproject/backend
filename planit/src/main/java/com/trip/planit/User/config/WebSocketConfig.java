@@ -16,7 +16,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // 엔드포인트 등록, SockJS fallback 활성화
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:63342")
+                .setAllowedOriginPatterns("http://localhost:63342", "http://localhost:5173")
                 .addInterceptors(new CustomHandshakeInterceptor()) // 인증 정보를 attributes에 저장
                 .setHandshakeHandler(new CustomHandshakeHandler())    // 저장된 principal을 반환하도록 함
                 .withSockJS();
