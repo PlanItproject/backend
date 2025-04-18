@@ -2,6 +2,7 @@ package com.trip.planit.User.repository;
 
 import com.trip.planit.User.entity.ChatMessage;
 import io.lettuce.core.dynamic.annotation.Param;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -16,5 +17,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     List<ChatMessage> findAllByChatRoomIdOrderByCreatedAtAsc(Long chatRoomId);
     List<ChatMessage> findAllByChatRoom_IdOrderByCreatedAtAsc(Long chatRoomId);
+    Optional<ChatMessage> findTop1ByChatRoom_IdOrderByCreatedAtDesc(Long chatRoomId);
 
 }

@@ -1,324 +1,192 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>실시간 채팅 테스트</title>
+    <meta charset="UTF-8" />
+    <title>1:1 채팅 테스트</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.0/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; }
-        .panel { border: 1px solid #ccc; padding: 1em; margin-bottom: 2em; }
-        h2 { margin-top: 0; }
-        .log { font-size: 0.9em; color: #555; white-space: pre-wrap; margin-top: 0.5em; }
-        .messages { list-style-type: none; padding: 0; height: 200px; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 1em; }
-        .messages li { padding: 5px; border-bottom: 1px solid #eee; }
-        .chat-container { display: none; margin-top: 1em; }
-        .chat-header { font-weight: bold; margin-bottom: 0.5em; }
+        body { font-family: Arial; max-width:600px; margin:auto; padding:1em; }
+        #roomsSection,#chatSection { display:none; }
+        ul{list-style:none;padding:0;}
+        li{padding:.5em;border-bottom:1px solid #ddd;cursor:pointer;}
+        #chatArea{border:1px solid #ccc;height:300px;overflow-y:auto;padding:.5em;}
+        .flex{display:flex;gap:.5em;}
+        .flex input{flex:1;}
     </style>
 </head>
 <body>
-<h1>실시간 채팅 테스트</h1>
-<p>
-    **테스트 방법:**<br>
-    각 계정 A와 B를 별도의 브라우저(또는 시크릿 모드)에서 열고 각각 로그인하세요.
-</p>
 
-<!-- 계정 A 패널 -->
-<div class="panel" id="panelA">
-    <h2>계정 A</h2>
-    <!-- 로그인 폼 -->
-    <form id="loginFormA">
-        <label>Email:</label>
-        <input type="email" id="loginEmailA" placeholder="accountA@example.com" required>
-        <br><br>
-        <label>Password:</label>
-        <input type="password" id="loginPasswordA" required>
-        <br><br>
-        <button type="submit">로그인</button>
+<h1>1:1 채팅 테스트</h1>
+
+<!-- 1) 로그인 -->
+<div id="loginSection">
+    <h2>로그인</h2>
+    <form id="loginForm">
+        <input type="email" id="loginEmail" placeholder="이메일" required />
+        <input type="password" id="loginPassword" placeholder="비밀번호" required />
+        <button>로그인</button>
     </form>
-    <div id="loginResultA" class="log"></div>
-    <hr>
-    <!-- 채팅방 생성 영역 -->
-    <div id="createChatRoomPanelA" style="display:none;">
-        <h3>채팅방 생성 (A)</h3>
-        <form id="createChatRoomFormA">
-            <label>대화 상대 ID (숫자):</label>
-            <input type="number" id="guestIdA" placeholder="예: 2" required>
-            <button type="submit">채팅방 생성</button>
-        </form>
-        <div id="createChatRoomResultA" class="log"></div>
-    </div>
-    <hr>
-    <!-- 채팅 인터페이스 -->
-    <button onclick="connectChat('A')">Chat Connect (A)</button>
-    <button onclick="disconnectChat('A')">Chat Disconnect (A)</button>
-    <div id="chatStatusA" class="log">Disconnected</div>
-    <div class="chat-container" id="chatContainerA">
-        <div class="chat-header">
-            채팅 (A) - 방 ID: <span id="chatRoomIdDisplayA"></span>
-        </div>
-        <!-- 자동으로 설정된 상대방 이메일 표시 -->
-        <p id="receiverDisplayA"></p>
-        <br>
-        <label>Message:</label>
-        <input type="text" id="chatMessageA" value="Hello from A!">
-        <button onclick="sendChatMessage('A')">Send</button>
-        <button onclick="leaveChatRoom('A')">채팅방 나가기</button>
-        <ul id="chatMessagesA" class="messages"></ul>
+    <div id="loginError" style="color:red;"></div>
+</div>
+
+<!-- 2) 채팅방 목록 -->
+<div id="roomsSection">
+    <h2>내 채팅방</h2>
+    <ul id="roomsList"></ul>
+    <h3>새 채팅 열기</h3>
+    <div class="flex">
+        <input type="email" id="newChatEmail" placeholder="상대 이메일" />
+        <button id="newChatBtn">새 채팅</button>
     </div>
 </div>
 
-<!-- 계정 B 패널 -->
-<div class="panel" id="panelB">
-    <h2>계정 B</h2>
-    <!-- 로그인 폼 -->
-    <form id="loginFormB">
-        <label>Email:</label>
-        <input type="email" id="loginEmailB" placeholder="accountB@example.com" required>
-        <br><br>
-        <label>Password:</label>
-        <input type="password" id="loginPasswordB" required>
-        <br><br>
-        <button type="submit">로그인</button>
-    </form>
-    <div id="loginResultB" class="log"></div>
-    <hr>
-    <!-- 채팅방 생성 영역 -->
-    <div id="createChatRoomPanelB" style="display:none;">
-        <h3>채팅방 생성 (B)</h3>
-        <form id="createChatRoomFormB">
-            <label>대화 상대 ID (숫자):</label>
-            <input type="number" id="guestIdB" placeholder="예: 1" required>
-            <button type="submit">채팅방 생성</button>
-        </form>
-        <div id="createChatRoomResultB" class="log"></div>
-    </div>
-    <hr>
-    <!-- 채팅 인터페이스 -->
-    <button onclick="connectChat('B')">Chat Connect (B)</button>
-    <button onclick="disconnectChat('B')">Chat Disconnect (B)</button>
-    <div id="chatStatusB" class="log">Disconnected</div>
-    <div class="chat-container" id="chatContainerB">
-        <div class="chat-header">
-            채팅 (B) - 방 ID: <span id="chatRoomIdDisplayB"></span>
-        </div>
-        <p id="receiverDisplayB"></p>
-        <br>
-        <label>Message:</label>
-        <input type="text" id="chatMessageB" value="Hello from B!">
-        <button onclick="sendChatMessage('B')">Send</button>
-        <button onclick="leaveChatRoom('B')">채팅방 나가기</button>
-        <ul id="chatMessagesB" class="messages"></ul>
+<!-- 3) 대화 화면 -->
+<div id="chatSection">
+    <button id="backBtn">← 목록으로</button>
+    <h2 id="chatWith">대화 상대: </h2>
+    <div id="chatArea"></div>
+    <div class="flex">
+        <input type="text" id="messageInput" placeholder="메시지…" />
+        <button id="sendBtn">Send</button>
     </div>
 </div>
-
-<!-- SockJS와 STOMP 라이브러리 로드 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
 <script>
-    // 고쳤음: 각 계정별 STOMP 클라이언트를 저장하는 객체 및 전역 변수
-    const chatClients = {};
-    let loggedInUserIdA = null;
-    let loggedInUserIdB = null;
-    let currentChatRoomId = null; // 서버에서 받은 채팅방 ID
+    let stompClient, currentUserEmail, currentUserNick;
+    let currentChatEmail, currentChatNick;
 
-    // 고쳤음: ChatResponse 객체 전체를 저장 (상대방의 이메일 등 포함)
-    let currentChatResponse = null;
+    const loginForm    = document.getElementById('loginForm');
+    const loginError   = document.getElementById('loginError');
+    const loginSection = document.getElementById('loginSection');
+    const roomsSection = document.getElementById('roomsSection');
+    const chatSection  = document.getElementById('chatSection');
+    const roomsList    = document.getElementById('roomsList');
+    const newChatBtn   = document.getElementById('newChatBtn');
+    const newChatEmail = document.getElementById('newChatEmail');
+    const backBtn      = document.getElementById('backBtn');
+    const chatWith     = document.getElementById('chatWith');
+    const chatArea     = document.getElementById('chatArea');
+    const sendBtn      = document.getElementById('sendBtn');
+    const msgInput     = document.getElementById('messageInput');
 
-    // 계정 A 로그인 처리
-    document.getElementById('loginFormA').addEventListener('submit', async function(e) {
+    // 1) 로그인
+    loginForm.addEventListener('submit', async e => {
         e.preventDefault();
-        const email = document.getElementById('loginEmailA').value;
-        const password = document.getElementById('loginPasswordA').value;
+        loginError.textContent = '';
+        const email = loginEmail.value.trim();
+        const pwd   = loginPassword.value.trim();
         try {
-            const response = await fetch('http://localhost:9090/public/users/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ email, password })
+            const res = await fetch('http://localhost:9090/public/users/login', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                credentials:'include',
+                body: JSON.stringify({ email, password: pwd })
             });
-            if (!response.ok) throw new Error("로그인 실패: " + response.status);
-            const data = await response.json();
-            loggedInUserIdA = data.userId;
-            document.getElementById('loginResultA').innerText = "로그인 성공: " + data.email;
-            document.getElementById('createChatRoomPanelA').style.display = 'block';
-        } catch (error) {
-            document.getElementById('loginResultA').innerText = "로그인 오류: " + error;
+            if(!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            currentUserEmail = data.email;
+            currentUserNick  = data.nickname || data.email;
+            loginSection.style.display = 'none';
+            roomsSection.style.display = 'block';
+            connectWS();
+            loadRooms();
+        } catch(err) {
+            loginError.textContent = '로그인 실패';
         }
     });
 
-    // 계정 B 로그인 처리
-    document.getElementById('loginFormB').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const email = document.getElementById('loginEmailB').value;
-        const password = document.getElementById('loginPasswordB').value;
+    // 2) 방 목록 로드
+    async function loadRooms(){
         try {
-            const response = await fetch('http://localhost:9090/public/users/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ email, password })
-            });
-            if (!response.ok) throw new Error("로그인 실패: " + response.status);
-            const data = await response.json();
-            loggedInUserIdB = data.userId;
-            document.getElementById('loginResultB').innerText = "로그인 성공: " + data.email;
-            document.getElementById('createChatRoomPanelB').style.display = 'block';
-        } catch (error) {
-            document.getElementById('loginResultB').innerText = "로그인 오류: " + error;
-        }
-    });
-
-    // 채팅방 생성 처리 (계정 A)
-    document.getElementById('createChatRoomFormA').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const guestId = document.getElementById('guestIdA').value;
-        try {
-            const response = await fetch('http://localhost:9090/chatrooms/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ roomMakerId: loggedInUserIdA, guestId: guestId })
-            });
-            if (!response.ok) throw new Error("채팅방 생성 실패: " + response.status);
-            // 고쳤음: 서버가 ChatResponse를 반환하도록 수정되었으므로 ChatResponse 객체를 사용합니다.
-            const chatResponse = await response.json();
-            currentChatResponse = chatResponse;
-            currentChatRoomId = chatResponse.chatRoomId;
-            document.getElementById('createChatRoomResultA').innerText = "채팅방 생성 성공: 방 ID " + chatResponse.chatRoomId;
-            document.getElementById('chatContainerA').style.display = 'block';
-            document.getElementById('chatRoomIdDisplayA').innerText = chatResponse.chatRoomId;
-            // 고쳤음: 로그인한 계정이 roomMaker이면 상대방은 guest의 이메일, 아니면 roomMaker의 이메일.
-            if (loggedInUserIdA === chatResponse.roomMakerId) {
-                document.getElementById('receiverDisplayA').innerText = "Receiver: " + chatResponse.guestEmail;
-            } else {
-                document.getElementById('receiverDisplayA').innerText = "Receiver: " + chatResponse.roomMakerEmail;
-            }
-        } catch (error) {
-            document.getElementById('createChatRoomResultA').innerText = "채팅방 생성 오류: " + error;
-        }
-    });
-
-    // 채팅방 생성 처리 (계정 B)
-    document.getElementById('createChatRoomFormB').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const guestId = document.getElementById('guestIdB').value;
-        try {
-            const response = await fetch('http://localhost:9090/chatrooms/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ roomMakerId: loggedInUserIdB, guestId: guestId })
-            });
-            if (!response.ok) throw new Error("채팅방 생성 실패: " + response.status);
-            const chatResponse = await response.json();
-            currentChatResponse = chatResponse;
-            currentChatRoomId = chatResponse.chatRoomId;
-            document.getElementById('createChatRoomResultB').innerText = "채팅방 생성 성공: 방 ID " + chatResponse.chatRoomId;
-            document.getElementById('chatContainerB').style.display = 'block';
-            document.getElementById('chatRoomIdDisplayB').innerText = chatResponse.chatRoomId;
-            if (loggedInUserIdB === chatResponse.roomMakerId) {
-                document.getElementById('receiverDisplayB').innerText = "Receiver: " + chatResponse.guestEmail;
-            } else {
-                document.getElementById('receiverDisplayB').innerText = "Receiver: " + chatResponse.roomMakerEmail;
-            }
-        } catch (error) {
-            document.getElementById('createChatRoomResultB').innerText = "채팅방 생성 오류: " + error;
-        }
-    });
-
-    // STOMP 연결 및 구독 (계정별)
-    function connectChat(accountKey) {
-        if (!currentChatRoomId) {
-            addChatLog("채팅방 ID가 설정되지 않았습니다. 먼저 채팅방을 생성하세요.");
-            return;
-        }
-        const socket = new SockJS('http://localhost:9090/ws');
-        const client = Stomp.over(socket);
-        client.connect({}, function(frame) {
-            addChatLog("STOMP 연결 성공 (" + accountKey + "): " + frame);
-            document.getElementById('chatStatus' + accountKey).innerText = "Connected";
-            chatClients[accountKey] = client;
-            // 개인 큐 구독: 자신의 경우
-            client.subscribe("/user/queue/private", function(message) {
-                let displayMessage;
-                try {
-                    const data = JSON.parse(message.body);
-                    displayMessage = data.sender + ": " + data.content;
-                } catch (e) {
-                    displayMessage = message.body;
-                }
+            const res = await fetch('http://localhost:9090/private/chatrooms/user', { credentials:'include' });
+            const list = await res.json();
+            roomsList.innerHTML = '';
+            list.forEach(r => {
                 const li = document.createElement('li');
-                li.innerText = displayMessage;
-                document.getElementById('chatMessages' + accountKey).appendChild(li);
+                li.textContent = `${r.otherNickName} — ${r.lastMessage||'-'} (${r.lastMessageTime||'-'})`;
+                li.onclick = ()=> openChat(r.otherNickName, r.otherEmail);
+                roomsList.appendChild(li);
             });
-            addChatLog("채팅 구독 완료 (" + accountKey + "): /user/queue/private");
-        }, function(error) {
-            addChatLog("STOMP 연결 오류 (" + accountKey + "): " + error);
+        } catch(e){ console.error(e) }
+    }
+
+    // 3) 새 채팅
+    newChatBtn.onclick = () => {
+        const email = newChatEmail.value.trim();
+        if(!email) return alert('이메일 입력');
+        openChat(email,email);
+    }
+
+    // 4) 채팅 열기
+    async function openChat(nick,email){
+        currentChatNick  = nick;
+        currentChatEmail = email;
+        roomsSection.style.display = 'none';
+        chatSection.style.display  = 'block';
+        chatWith.textContent = `대화 상대: ${nick}`;
+        chatArea.innerHTML = '';
+
+        // 이전 대화
+        try {
+            const res = await fetch(
+                `http://localhost:9090/private/chatrooms/history?user1=${encodeURIComponent(currentUserEmail)}&user2=${encodeURIComponent(email)}`,
+                { credentials:'include' }
+            );
+            const hist = await res.json();
+            hist.forEach(m=>{
+                // m.sender은 이메일, m.content는 메시지
+                const who = m.sender===currentUserEmail ? currentUserNick : currentChatNick;
+                showMsg(who, m.content);
+            });
+        } catch(e){ console.error(e) }
+    }
+
+    // 5) 뒤로
+    backBtn.onclick = ()=>{
+        chatSection.style.display='none';
+        roomsSection.style.display='block';
+        currentChatEmail = null;
+    }
+
+    // 6) WS 연결
+    function connectWS(){
+        const sock = new SockJS('http://localhost:9090/ws',null,{
+            transports:['websocket','xhr-streaming','xhr-polling'],
+            withCredentials:true
+        });
+        stompClient = Stomp.over(sock);
+        stompClient.connect({},()=>{
+            stompClient.subscribe('/user/queue/private', msg=>{
+                const m = JSON.parse(msg.body);
+                // 수신: m.sender는 발신자 이메일
+                if(currentChatEmail && m.sender===currentChatEmail){
+                    showMsg(currentChatNick, m.content);
+                }
+                loadRooms();
+            });
         });
     }
 
-    function disconnectChat(accountKey) {
-        if (chatClients[accountKey]) {
-            chatClients[accountKey].disconnect(function() {
-                document.getElementById('chatStatus' + accountKey).innerText = "Disconnected";
-                addChatLog("채팅 연결 해제 (" + accountKey + ")");
-                delete chatClients[accountKey];
-            });
-        }
+    // 7) 메시지 전송
+    sendBtn.onclick = ()=>{
+        const txt = msgInput.value.trim();
+        if(!txt||!currentChatEmail) return;
+        const obj = { receiver:currentChatEmail, content:txt };
+        stompClient.send('/pub/chat.sendPrivateMessage',{},JSON.stringify(obj));
+        showMsg(currentUserNick,txt);  // 즉시 내 화면에도
+        msgInput.value='';
+        loadRooms();
     }
 
-    // 메시지 전송 함수 (계정별)
-    function sendChatMessage(accountKey) {
-        const client = chatClients[accountKey];
-        if (!client || !client.connected) {
-            alert('Chat not connected for account ' + accountKey + '!');
-            return;
-        }
-        // 고쳤음: ChatResponse에서 받은 이메일 정보를 사용하여, 자동으로 상대방 이메일을 결정함.
-        let receiverEmail = "";
-        if (accountKey === 'A') {
-            receiverEmail = (loggedInUserIdA === currentChatResponse.roomMakerId)
-                ? currentChatResponse.guestEmail
-                : currentChatResponse.roomMakerEmail;
-        } else if (accountKey === 'B') {
-            receiverEmail = (loggedInUserIdB === currentChatResponse.roomMakerId)
-                ? currentChatResponse.guestEmail
-                : currentChatResponse.roomMakerEmail;
-        }
-        const message = document.getElementById('chatMessage' + accountKey).value;
-        const chatMessage = { receiver: receiverEmail, content: message };
-        client.send('/pub/chat.sendPrivateMessage', {}, JSON.stringify(chatMessage));
-        const li = document.createElement('li');
-        li.innerText = "나: " + message;
-        document.getElementById('chatMessages' + accountKey).appendChild(li);
+    // 메시지 화면 출력
+    function showMsg(who,txt){
+        const p=document.createElement('p');
+        p.textContent = `${who} : ${txt}`;
+        chatArea.appendChild(p);
+        chatArea.scrollTop = chatArea.scrollHeight;
     }
-
-    // 채팅방 나가기 함수: 시스템 메시지 전송 후 UI 숨김 및 연결 해제
-    function leaveChatRoom(accountKey) {
-        if (!currentChatRoomId) {
-            alert("채팅방이 생성되지 않았습니다.");
-            return;
-        }
-        const client = chatClients[accountKey];
-        if (!client || !client.connected) {
-            alert("채팅 연결이 되어 있지 않습니다.");
-            return;
-        }
-        client.send('/pub/chat.leave', {}, currentChatRoomId);
-        document.getElementById('chatContainer' + accountKey).style.display = 'none';
-        disconnectChat(accountKey);
-    }
-
-    // 간단한 로그 출력 (콘솔)
-    function addChatLog(message) {
-        console.log(message);
-    }
-
-    // 전역 함수 등록 (버튼 onclick에서 참조)
-    window.connectChat = connectChat;
-    window.disconnectChat = disconnectChat;
-    window.sendChatMessage = sendChatMessage;
-    window.leaveChatRoom = leaveChatRoom;
 </script>
+
 </body>
 </html>
