@@ -4,9 +4,12 @@ import com.trip.planit.User.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;            // Base64 디코딩용 추가
+import io.jsonwebtoken.security.Keys;         //HMAC 키 생성용 추가
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+
 
 import javax.crypto.spec.SecretKeySpec;
 import java.security.Key;
@@ -23,8 +26,9 @@ public class JwtUtil {
 
     // 서명키 생성
     private Key getSigningKey() {
-        byte[] keyBytes = Base64.getDecoder().decode(SECRET_KEY);
-        return new SecretKeySpec(keyBytes, SignatureAlgorithm.HS512.getJcaName());
+        // 수정: Base64 디코딩을 io.jsonwebtoken.io.Decoders 사용으로 변경
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     // 토큰 생성 (이메일과 역할을 포함)
