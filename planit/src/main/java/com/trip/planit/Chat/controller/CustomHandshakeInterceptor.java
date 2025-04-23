@@ -1,4 +1,4 @@
-package com.trip.planit.User.controller;
+package com.trip.planit.Chat.controller;
 
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
