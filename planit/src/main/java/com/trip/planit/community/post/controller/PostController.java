@@ -16,7 +16,9 @@ import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@CrossOrigin
+
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+
 @RestController
 @RequestMapping("/community/posts")
 @RequiredArgsConstructor
@@ -38,6 +40,7 @@ public class PostController {
     public ResponseEntity<PostDto> getPostById(@PathVariable Long id) {
         return ResponseEntity.ok(postService.getPostById(id));
     }
+  
 
     // 3. 팔로우한 유저의 게시글 조회
     @GetMapping("/followed")

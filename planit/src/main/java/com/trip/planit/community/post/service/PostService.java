@@ -20,6 +20,7 @@ public class PostService {
 
     private final PostRepository postRepository;
 
+
     // 모든 게시글 조회
     public List<PostDto> getAllPosts() {
         return postRepository.findAll().stream()
@@ -33,6 +34,7 @@ public class PostService {
                 .orElseThrow(() -> new EntityNotFoundException("해당 게시글을 찾을 수 없습니다."));
         return PostDto.fromEntity(post);
     }
+  
 
     // 게시글 작성
     public PostDto createPost(PostDto postDto) {
@@ -91,6 +93,7 @@ public class PostService {
         // 변경된 데이터를 저장
         return postRepository.save(post);
     }
+
 
     // 게시글 삭제
     public void deletePost(Long id) {
