@@ -1,19 +1,16 @@
 //package com.trip.planit.Chat.controller;
 //
+//import com.trip.planit.Chat.dto.ChatMessageDTO;
+//import com.trip.planit.Chat.dto.PrivateChatRoomRequest;
+//import com.trip.planit.Chat.dto.PrivateChatRoomResponse;
 //import com.trip.planit.User.apiPayload.code.status.ErrorStatus;
 //import com.trip.planit.User.apiPayload.exception.GeneralException;
-//import com.trip.planit.User.dto.ChatMessageDto;
-//import com.trip.planit.User.dto.ChatRequest;
-//import com.trip.planit.User.dto.ChatResponse;
-//import com.trip.planit.User.entity.ChatMessage;
-//import com.trip.planit.User.entity.ChatParticipant;
-//import com.trip.planit.User.entity.ChatRoom;
-//import com.trip.planit.User.entity.PrivateChatRoom;
 //import com.trip.planit.User.entity.User;
-//import com.trip.planit.User.repository.ChatMessageRepository;
+//import com.trip.planit.Chat.repository.ChatMessageRepository;
 //import com.trip.planit.User.repository.UserRepository;
 //import com.trip.planit.Chat.service.PrivateChatService;
 //import io.swagger.v3.oas.annotations.Operation;
+//import jakarta.validation.Valid;
 //import java.util.stream.Collectors;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.web.bind.annotation.*;
@@ -22,7 +19,7 @@
 //import java.util.List;
 //
 //@RestController
-//@RequestMapping("/private/chatrooms")
+//@RequestMapping("/private")
 //public class PrivateChatRestController {
 //
 //  private final PrivateChatService privateChatService;
@@ -36,96 +33,33 @@
 //    this.chatMessageRepository = chatMessageRepository;
 //  }
 //
-//  @Operation(summary = "1:1 채팅방 생성", description = "두 사용자 간 1:1 채팅방을 생성합니다.")
+//  @Operation(
+//      summary = "1:1 채팅방 생성",
+//      description = "인증된 사용자와 요청된 상대방 간 1:1 채팅방을 생성하거나 기존 방을 반환합니다."
+//  )
 //  @PostMapping("/create")
-//  public ChatResponse create(@RequestBody ChatRequest chatRequest) {
-//    User a = userRepository.findByUserId(chatRequest.getRoomMakerId())
-//        .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
-//    User b = userRepository.findByUserId(chatRequest.getGuestId())
-//        .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
-//
-//    ChatRoom room = privateChatService.createOrGetRoom(a, b);
-//
-//    return ChatResponse.fromUsers(
-//        room.getId(),
-//        a,
-//        b,
-//        /* 마지막 메시지 */ "",
-//        /* 마지막 메시지 시간 */ ""
-//    );
+//  public PrivateChatRoomResponse create(
+//      @Valid @RequestBody PrivateChatRoomRequest request,
+//      Principal principal
+//  ) {
+//    // principal.getName()에 담긴 이메일과 request(guestId)를 한 번에 서비스로 넘깁니다.
+//    return privateChatService.createChatRoom(principal.getName(), request);
 //  }
 //
-//  @Operation(summary = "1:1 채팅방 목록 조회", description = "로그인한 사용자가 참여 중인 1:1 채팅방 목록 반환")
-//  @GetMapping("/user")
-//  public List<ChatResponse> list(Principal principal) {
-//    // 1) 현재 사용자 ID 조회
-//    Long me = userRepository.findByEmail(principal.getName())
-//        .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND))
-//        .getUserId();
-//
-//    // 2) 활성화된 1:1 채팅방 조회
-//    List<ChatRoom> rooms = privateChatService.getActiveRooms(me);
-//
-//    // 3) 채팅방별 ChatResponse 생성
-//    return rooms.stream()
-//        .map(room -> {
-//          if (!(room instanceof PrivateChatRoom privateRoom)) {
-//            throw new GeneralException(ErrorStatus.BAD_REQUEST_CUSTOM);
-//          }
-//
-//          // 3-1) 아직 떠나지 않은 참가자만
-//          List<ChatParticipant> active = privateRoom.getParticipants().stream()
-//              .filter(p -> p.getLeftAt() == null)
-//              .toList();
-//
-//          // 3-2) 상대 참가자 찾기
-//          ChatParticipant otherP = active.stream()
-//              .filter(p -> !p.getUser().getUserId().equals(me))
-//              .findFirst()
-//              .orElseThrow(() -> new GeneralException(ErrorStatus.BAD_REQUEST_CUSTOM));
-//
-//          User other = otherP.getUser();
-//
-//          // 3-3) 마지막 메시지 한 건 조회
-//          ChatMessage last = chatMessageRepository
-//              .findTop1ByChatRoom_IdOrderByCreatedAtDesc(privateRoom.getId())
-//              .orElse(null);
-//
-//          String lastMsg  = last  != null ? last.getContent()           : "";
-//          String lastTime = last  != null ? last.getCreatedAt().toString() : "";
-//
-//          // 3-4) DTO 빌드
-//          return ChatResponse.forList(
-//              privateRoom.getId(),
-//              // user1/user2 ID 필요하다면 participants 순서대로 꺼내세요:
-//              active.get(0).getUser().getUserId(),
-//              active.get(1).getUser().getUserId(),
-//              other.getNickname(),
-//              other.getEmail(),
-//              lastMsg,
-//              lastTime
-//          );
-//        })
-//        .collect(Collectors.toList());
-//  }
-//
-//
-//  @Operation(summary = "1:1 채팅 기록 조회", description = "두 사용자 간 전체 메시지 내역 조회")
-//  @GetMapping("/history")
-//  public List<ChatMessageDto> history(
-//      @RequestParam String user1,
-//      @RequestParam String user2) {
-//
-//    // 서비스 메소드 호출로 간결해짐
+//  @GetMapping("/history/{guestId}")
+//  public List<ChatMessageDTO> historyPath(
+//      Principal principal,
+//      @PathVariable Long guestId
+//  ) {
+//    String user1 = principal.getName();
+//    User guest = userRepository.findById(guestId)
+//        .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
+//    String user2 = guest.getEmail();
 //    return privateChatService.getUserChatHistory(user1, user2).stream()
-//        .map(m -> ChatMessageDto.builder()
-//            .id(m.getId())
-//            .senderNickname(m.getSender())
-//            .type(m.getType())
-//            .content(m.getContent())
-//            .timestamp(m.getCreatedAt())
-//            .build()
-//        )
+//        .map(m -> new ChatMessageDTO(
+//            m.getSender(), m.getContent(), m.getType(), m.getCreatedAt()
+//        ))
 //        .collect(Collectors.toList());
 //  }
+//
 //}
