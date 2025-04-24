@@ -3,13 +3,16 @@ package com.trip.planit.community.post.dto;
 import com.trip.planit.community.post.entity.Image;
 import com.trip.planit.community.post.entity.Post;
 import com.trip.planit.community.post.entity.PostCategory;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@NoArgsConstructor // 기본 생성자 (추가)
+@AllArgsConstructor // 모든 파라미터를 포함한 생성자 (Optional)
+@Builder
 @Getter
 @Setter
 public class PostDto {
@@ -22,6 +25,10 @@ public class PostDto {
     private Double longitude; // 경도
     private List<MultipartFile> images; // 다중 이미지 데이터
     private List<String> imageUrls;
+    private LocalDateTime createdAt; // 작성 시간 추가
+    private String author; // 사용자의 닉네임 저장
+
+
 
 
     public Post toEntity(List<String> imageUrls) {
