@@ -1,4 +1,4 @@
-package com.trip.planit.User.entity;
+package com.trip.planit.Chat.entity;
 
 public enum MessageType {
     PRIVATE,

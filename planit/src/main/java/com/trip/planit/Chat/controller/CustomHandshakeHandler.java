@@ -1,4 +1,4 @@
-package com.trip.planit.User.controller;
+package com.trip.planit.Chat.controller;
 
 import com.trip.planit.User.apiPayload.code.status.ErrorStatus;
 import com.trip.planit.User.apiPayload.exception.GeneralException;
