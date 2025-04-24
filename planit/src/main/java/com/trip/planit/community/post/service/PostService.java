@@ -120,4 +120,16 @@ public class PostService {
             throw new RuntimeException("이미지 업로드에 실패하였습니다: " + e.getMessage());
         }
     }
+
+    public PostDto toDto(Post post) {
+        // Post 객체를 PostDto로 변환
+        return PostDto.builder()
+                .id(post.getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .createdAt(post.getCreatedAt())
+                .author(post.getAuthor().getNickname()) // User 엔터티의 nickname 매핑
+                .build();
+    }
+
 }
