@@ -1,6 +1,6 @@
 package com.trip.planit.Chat.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -10,8 +10,8 @@ import lombok.experimental.SuperBuilder;
 @Setter
 @NoArgsConstructor
 @SuperBuilder
-public class OpenChatRoomRequest {
-  /** 방 이름 */
-  @NotBlank
-  private String roomName;
+public class PrivateChatRoomRequest {
+  // 상대방
+  @NotNull
+  private Long guestId;
 }

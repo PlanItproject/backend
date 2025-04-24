@@ -49,6 +49,7 @@ public class SecurityConfig {
                         // WebSocket 엔드포인트(/ws/**)도 모두 허용
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/openchat/**", "/private/**").hasAnyRole("USER", "ADMIN") // ✅ 추가!
                         .requestMatchers("/user/**", "/chatrooms/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/public/users/**").permitAll()
                         .anyRequest().authenticated()

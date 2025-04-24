@@ -41,6 +41,7 @@ public enum ErrorStatus implements BaseErrorCode {
   USER_ALREADY_IN_ROOM(HttpStatus.BAD_REQUEST, "이미 참여 중인 채팅방입니다."),
   INVALID_UUID(HttpStatus.BAD_REQUEST, "유효한 UUID 형식이 아닙니다."),
   USER_NOT_IN_ROOM(HttpStatus.BAD_REQUEST, "참여 중인 방이 아닙니다."),
+  NOT_ROOM_OWNER(HttpStatus.FORBIDDEN, "방장 권한입니다."),
 
   // User
   USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 사용자입니다."),

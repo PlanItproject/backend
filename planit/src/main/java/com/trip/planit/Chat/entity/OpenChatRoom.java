@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @DiscriminatorValue("OPEN")
@@ -12,12 +13,12 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class OpenChatRoom extends ChatRoom {
 
   @Column(nullable = false)
   private String roomName;
 
-  @Column(nullable = false)
-  private Long creatorId;
+//  @Column(nullable = false)
+//  private Long creatorId;
 }

@@ -9,6 +9,6 @@ import lombok.experimental.SuperBuilder;
 // 채팅방 생성 공동 요청
 @Getter @Setter @NoArgsConstructor @SuperBuilder
 public abstract class ChatRoomRequest {
-  @NotNull
-  private Long creatorId;
+//  @NotNull
+//  private Long creatorId;
 }

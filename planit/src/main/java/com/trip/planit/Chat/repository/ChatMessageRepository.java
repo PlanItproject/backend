@@ -18,10 +18,23 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             "     OR (m.sender   = :user2 AND m.receiver = :user1)) " +
             " ORDER BY m.createdAt ASC"
     )
+
     List<ChatMessage> findPrivateChatHistory(
         @Param("user1") String user1,
         @Param("user2") String user2
     );
 
     List<ChatMessage> findAllByChatRoomIdOrderByCreatedAtAsc(Long chatRoomId);
+
+    /**
+     * 활성화된 방 목록 (나간 참가자가 없거나 leftAt=null)
+     */
+    @Query("""
+        SELECT r
+          FROM PrivateChatRoom r
+          JOIN r.participants p
+         WHERE p.user.userId = :userId
+           AND p.leftAt IS NULL
+    """)
+    Optional<ChatMessage> findFirstByChatRoomIdOrderByCreatedAtDesc(Long chatRoomId);
 }

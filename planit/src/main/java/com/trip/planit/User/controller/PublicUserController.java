@@ -36,7 +36,7 @@ import java.util.Optional;
 import static com.trip.planit.User.entity.Role.ROLE_USER;
 
 @Tag(name = "Public User")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = { "http://localhost:5173", "http://54.206.71.88:9090" }, allowCredentials = "true")
 @RestController
 @RequestMapping("/public/users")
 public class PublicUserController {
