@@ -10,7 +10,7 @@ import lombok.experimental.SuperBuilder;
 @Setter
 @NoArgsConstructor
 @SuperBuilder
-public class OpenChatRoomRequest extends ChatRoomRequest {
+public class OpenChatRoomRequest {
   /** 방 이름 */
   @NotBlank
   private String roomName;

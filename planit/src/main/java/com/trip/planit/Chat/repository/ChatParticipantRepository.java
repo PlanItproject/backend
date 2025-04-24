@@ -22,4 +22,10 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
 
   @Transactional
   long deleteByLeftAtBefore(LocalDateTime threshold);
+
+  Optional<ChatParticipant> findByChatRoom_IdAndUser_UserId(Long roomId, Long userId);
+
+  boolean existsByChatRoom_IdAndLeftAtIsNull(Long roomId);
+
+
 }
