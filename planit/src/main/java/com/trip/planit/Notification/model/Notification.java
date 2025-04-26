@@ -12,13 +12,16 @@ public class Notification {
     private boolean isRead;
     private NotificationType type;
     private NotificationSender sender;
+    private String targetToken;
 
-    public Notification(String message, NotificationType type, NotificationSender sender) {
+
+    public Notification(String message, NotificationType type, NotificationSender sender, String targetToken) {
         this.message = message;
         this.type = type;
         this.sender = sender;
         this.createdAt = LocalDateTime.now();
         this.isRead = false;
+        this.targetToken = targetToken;
     }
 
     public void send() {

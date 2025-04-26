@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // **고쳤어**: WebSocket 엔드포인트(/ws/**)도 모두 허용
                         .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/notifications/test-send").permitAll()
+                        .requestMatchers("/notifications/*/fcm-token").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/user/**", "/chatrooms/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/public/users/**").permitAll()

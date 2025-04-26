@@ -14,7 +14,7 @@ public class ChatNotificationSender implements NotificationSender {
     @Override
     public void send(Notification notification) {
         try {
-            kafkaTemplate.send(NotificationConstants.TOPIC_CHAT, notification);
+            kafkaTemplate.send(NotificationConstants.CHANNEL_CHAT, notification);
             System.out.println("chat notification : " + notification.getMessage());
         } catch (Exception e) {
             throw new NotificationException("Failed to send chat notification", e);

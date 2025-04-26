@@ -79,4 +79,7 @@ public class User {
     // 탈퇴 사유 기타
     @Column(name="deleteReason_Description")
     private String deleteReason_Description;
+
+    @Column(name = "fcm_token")
+    private String fcmToken;
 }
