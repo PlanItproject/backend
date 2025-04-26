@@ -16,6 +16,7 @@ public class FcmNotificationSender implements NotificationSender {
     public void send(Notification notification) {
         try {
             Message message = Message.builder()
+                    .setToken(notification.getTargetToken())
                     .setNotification(com.google.firebase.messaging.Notification.builder()
                             .setTitle("Notification")
                             .setBody(notification.getMessage())

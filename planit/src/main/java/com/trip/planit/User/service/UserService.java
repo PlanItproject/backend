@@ -269,4 +269,12 @@ public class UserService {
         }
         throw new BadRequestException("User is not authenticated.");
     }
+
+    @Transactional
+    public void updateFcmToken(Long userId, String fcmToken) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+        user.setFcmToken(fcmToken);
+        userRepository.save(user);
+    }
 }

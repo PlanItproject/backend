@@ -13,7 +13,7 @@ public class ReplyNotification implements NotificationSender {
     @Override
     public void send(Notification notification) {
         try {
-            redisTemplate.convertAndSend(NotificationConstants.CHANNEL_CHAT, notification);
+            redisTemplate.convertAndSend(NotificationConstants.CHANNEL_REPLY, notification);
             System.out.println("reply notification : " + notification.getMessage());
         } catch (Exception e) {
             throw new NotificationException("Failed to send reply notification", e);
