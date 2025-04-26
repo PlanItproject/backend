@@ -35,20 +35,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         System.out.println("Configuring SecurityFilterChain...");
-        // **고쳤어**: CSRF 비활성화 (stateless JWT 기반이므로)
+        // CSRF 비활성화 (stateless JWT 기반이므로)
         http.csrf(csrf -> csrf.disable());
 
         http
                 .cors(withDefaults())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // URL별 접근 권한 설정
+//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
+            // URL별 접근 권한 설정
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        // **고쳤어**: WebSocket 엔드포인트(/ws/**)도 모두 허용
+                        // WebSocket 엔드포인트(/ws/**)도 모두 허용
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/notifications/test-send").permitAll()
                         .requestMatchers("/notifications/*/fcm-token").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/openchat/**", "/private/**").hasAnyRole("USER", "ADMIN") // ✅ 추가!
                         .requestMatchers("/user/**", "/chatrooms/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/public/users/**").permitAll()
                         .anyRequest().authenticated()

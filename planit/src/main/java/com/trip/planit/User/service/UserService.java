@@ -50,6 +50,10 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email: " + email));
     }
 
+    public User getUserByEmailOrNull(String email) {
+        return userRepository.findByEmail(email).orElse(null);
+    }
+
     // 로그인 - response 값
     public LoginResponse loginResponse(User user) {
         return LoginResponse.builder()
