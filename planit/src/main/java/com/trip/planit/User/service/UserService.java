@@ -275,6 +275,5 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("User not found"));
         user.setFcmToken(fcmToken);
-        userRepository.save(user);
     }
 }

@@ -14,7 +14,6 @@ public class Notification {
     private NotificationSender sender;
     private String targetToken;
 
-
     public Notification(String message, NotificationType type, NotificationSender sender, String targetToken) {
         this.message = message;
         this.type = type;

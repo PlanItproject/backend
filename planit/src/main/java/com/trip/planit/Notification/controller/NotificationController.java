@@ -1,7 +1,10 @@
 package com.trip.planit.Notification.controller;
 
-import com.trip.planit.Notification.model.Notification;
+import com.trip.planit.Notification.dto.RequestDto;
+import com.trip.planit.Notification.entity.NotificationEntity;
+import com.trip.planit.Notification.model.NotificationType;
 import com.trip.planit.Notification.service.NotificationService;
+import com.trip.planit.User.apiPayload.exception.ApiResponse;
 import com.trip.planit.User.service.UserService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -17,23 +20,16 @@ public class NotificationController {
     private final UserService userService;
 
 //    읽음처리
-    @PutMapping("/read")
-    public ResponseEntity<Void> markAsRead(@RequestParam String notificationKey) {
-        notificationService.markNotificationAsRead(notificationKey);
-        return ResponseEntity.ok().build();
-    }
-
-//    토큰 업데이트
-    @PostMapping("/{userId}/fcm-token")
-    public ResponseEntity<Void> updateFcmToken(@PathVariable Long userId, @RequestBody String fcmToken) {
-        userService.updateFcmToken(userId, fcmToken);
+    @PatchMapping("/{notificationId}/read")
+    public ResponseEntity<Void> markAsRead(@RequestParam Long notificationId) {
+        notificationService.markNotificationAsRead(notificationId);
         return ResponseEntity.ok().build();
     }
 
 //    읽지 않은 알림 조회
     @GetMapping("/unread/{userId}")
-    public ResponseEntity<List<Notification>> getUnreadNotifications(@PathVariable Long userId) {
-        List<Notification> unreadNotifications = notificationService.getUnreadNotifications(userId);
+    public ResponseEntity<List<NotificationEntity>> getUnreadNotifications(@PathVariable Long userId) {
+        List<NotificationEntity> unreadNotifications = notificationService.getUnreadNotifications(userId);
         return ResponseEntity.ok(unreadNotifications);
     }
 
@@ -43,7 +39,15 @@ public class NotificationController {
             @RequestParam Long userId,
             @RequestParam String message
     ) {
-        notificationService.sendChatNotification(message, userId);
+        notificationService.sendNotification(message, userId, NotificationType.CHAT);
         return ResponseEntity.ok().build();
+    }
+
+
+    //    토큰 업데이트
+    @PostMapping("/update-fcm-token")
+    public ApiResponse<?> updateFcmToken(@RequestBody RequestDto request) {
+        userService.updateFcmToken(request.getUserId(), request.getFcmToken());
+        return ApiResponse.onSuccess("FCM 토큰 업데이트 성공");
     }
 }

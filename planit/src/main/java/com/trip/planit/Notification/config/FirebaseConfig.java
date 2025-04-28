@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import java.io.FileInputStream;
 import org.springframework.core.io.ClassPathResource;
 
 @Configuration

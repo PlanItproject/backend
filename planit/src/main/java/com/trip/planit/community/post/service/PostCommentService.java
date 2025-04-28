@@ -1,5 +1,6 @@
 package com.trip.planit.community.post.service;
 
+import com.trip.planit.Notification.model.NotificationType;
 import com.trip.planit.Notification.service.NotificationService;
 import com.trip.planit.User.entity.User;
 import com.trip.planit.User.repository.UserRepository;
@@ -43,9 +44,10 @@ public class PostCommentService {
         // 자신의 게시글에 댓글을 단 경우가 아닐 때만 알림 생성
         if (!post.getAuthor().getUserId().equals(user.getUserId())) {
             String message = String.format("%s님이 회원님의 게시글에 댓글을 달았습니다.", user.getNickname());
-            notificationService.sendReplyNotification(
+            notificationService.sendNotification(
                     message,
-                    post.getAuthor().getUserId().toString()
+                    post.getAuthor().getUserId(),
+                    NotificationType.REPLY
             );
         }
 
@@ -81,9 +83,10 @@ public class PostCommentService {
         // 댓글 수정 시에도 알림을 보낼 수 있습니다 (선택적)
         if (!comment.getPost().getAuthor().getUserId().equals(user.getUserId())) {
             String message = String.format("%s님이 회원님의 게시글의 댓글을 수정했습니다.", user.getNickname());
-            notificationService.sendReplyNotification(
+            notificationService.sendNotification(
                     message,
-                    comment.getPost().getAuthor().getUserId().toString()
+                    comment.getPost().getAuthor().getUserId(),
+                    NotificationType.REPLY
             );
         }
 

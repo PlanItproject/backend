@@ -17,4 +17,8 @@ public class RedisDuplicateChecker {
     public void markAsSent(String key, Duration ttl) {
         redisStringTemplate.opsForValue().set(key, "sent", ttl);
     }
+
+    public void markAsSentIfAbsent(String key, Duration ttl) {
+        Boolean success = redisStringTemplate.opsForValue().setIfAbsent(key, "sent", ttl);
+    }
 }
