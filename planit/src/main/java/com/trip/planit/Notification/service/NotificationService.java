@@ -1,5 +1,6 @@
 package com.trip.planit.Notification.service;
 
+import com.trip.planit.Notification.dto.NotificationDto;
 import com.trip.planit.Notification.entity.NotificationEntity;
 import com.trip.planit.Notification.exception.NotificationException;
 import com.trip.planit.Notification.strategy.NotificationSenderFactory;
@@ -8,6 +9,7 @@ import com.trip.planit.Notification.model.NotificationType;
 import com.trip.planit.Notification.repository.NotificationRepository;
 import com.trip.planit.User.entity.User;
 import com.trip.planit.User.repository.UserRepository;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +43,7 @@ public class NotificationService {
         notification.send();
 
         NotificationEntity notificationEntity = NotificationEntity.builder()
-                .userId(userId)
+                .user(user)
                 .message(message)
                 .isRead(false)
                 .type(type)
@@ -62,7 +64,54 @@ public class NotificationService {
         }
     }
 
-    public List<NotificationEntity> getUnreadNotifications(Long userId) {
-        return notificationRepository.findByUserIdAndIsReadFalse(userId);
+    public List<NotificationDto> getUnreadNotifications(User user) {
+        return notificationRepository.findByUserAndIsReadFalse(user).stream()
+                .map(notification -> NotificationDto.builder()
+                        .id(notification.getId())
+                        .message(notification.getMessage())
+                        .type(notification.getType())
+                        .createdAt(notification.getCreatedAt())
+                        .isRead(notification.isRead())
+                        .build())
+                .toList();
+    }
+
+    public List<NotificationDto> getAllNotifications() {
+        return notificationRepository.findAll().stream()
+                .map(this::convertToDto)
+                .toList();
+    }
+
+    public List<NotificationDto> getNotificationsByType(NotificationType type) {
+        return notificationRepository.findByType(type).stream()
+                .map(this::convertToDto)
+                .toList();
+    }
+
+    public Long getUserIdByNickname(String nickname) {
+        return userRepository.findByNickname(nickname)
+                .orElseThrow(() -> new RuntimeException("User not found"))
+                .getUserId();
+    }
+
+    private NotificationDto convertToDto(NotificationEntity entity) {
+        return NotificationDto.builder()
+                .id(entity.getId())
+                .message(entity.getMessage())
+                .type(entity.getType())
+                .createdAt(entity.getCreatedAt())
+                .isRead(entity.isRead())
+                .nickname(entity.getUser().getNickname()) // 추가
+                .build();
+    }
+
+    public List<NotificationDto> getNotificationsByDate(LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+        return notificationRepository.findByCreatedAtBetween(startOfDay, endOfDay)
+                .stream()
+                .map(this::convertToDto)
+                .toList();
     }
 }

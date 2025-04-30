@@ -79,7 +79,10 @@ dependencies {
   	// JSON 직렬화를 위한 의존성 (기본적으로 spring-boot-starter-json 포함되어 있음)
   	implementation 'com.fasterxml.jackson.core:jackson-databind'
 
-  	implementation 'com.google.firebase:firebase-admin:9.1.1'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+
+	implementation 'com.google.firebase:firebase-admin:9.1.1'
 
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 }

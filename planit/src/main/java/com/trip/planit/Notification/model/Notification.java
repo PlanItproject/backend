@@ -1,5 +1,6 @@
 package com.trip.planit.Notification.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.trip.planit.Notification.strategy.NotificationSender;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -11,7 +12,10 @@ public class Notification {
     private LocalDateTime createdAt;
     private boolean isRead;
     private NotificationType type;
+
+    @JsonIgnore
     private NotificationSender sender;
+
     private String targetToken;
 
     public Notification(String message, NotificationType type, NotificationSender sender, String targetToken) {

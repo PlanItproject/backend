@@ -11,12 +11,18 @@ spring:
       port: 6379
 
   datasource:
-    hikari:
-      connectionTimeout: 60000
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://docker-mysql-test.cl82gmc8wwsn.ap-southeast-2.rds.amazonaws.com:3306/planit?rewriteBatchedStatements=true
     username: user
     password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      pool-name: HikariPool-1
+      connection-timeout: 30000
+      idle-timeout: 300000
+      max-lifetime: 600000
+      keepalive-time: 300000
+      maximum-pool-size: 10
+      minimum-idle: 2
 
   jpa:
     properties:

@@ -17,7 +17,7 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/mate")
+@RequestMapping("/mate")
 @Validated
 public class MateController {
 

@@ -14,7 +14,7 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/post/comments")
+@RequestMapping("/post/comments")
 public class PostCommentController {
 
     private final PostCommentService commentService;

@@ -1,6 +1,7 @@
 package com.trip.planit.Notification.entity;
 
 import com.trip.planit.Notification.model.NotificationType;
+import com.trip.planit.User.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,16 +19,19 @@ public class NotificationEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     private String message;
 
     private boolean isRead;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private NotificationType type;
 
     private LocalDateTime createdAt;
 
-    private String targetToken; // FCM 발송용 토큰
+    private String targetToken;
 }

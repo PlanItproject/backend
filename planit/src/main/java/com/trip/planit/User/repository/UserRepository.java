@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Optional<User> findByUserId(Long userId);
+    Optional<User> findByNickname(String nickname);
+
     boolean existsByEmail(String email);
     void deleteByEmail(String email);
     List<User> findByActiveFalseAndDeletionScheduledAtBefore(LocalDateTime dateTime);
