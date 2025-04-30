@@ -13,6 +13,7 @@ import com.trip.planit.User.entity.*;
 import com.trip.planit.User.repository.EmailVerificationRepository;
 import com.trip.planit.User.repository.TemporaryUserRepository;
 import com.trip.planit.User.repository.UserRepository;
+import java.util.Optional;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -130,6 +131,7 @@ public class UserService {
 
     // 회원가입 1단계 - 임시 회원으로 저장
     public void saveTemporaryUser(String email, String password, Platform platform, Language language) {
+        language = Optional.ofNullable(language).orElse(Language.KOREAN);
 
         TemporaryUser.TemporaryUserBuilder builder = TemporaryUser.builder()
                 .email(email)
@@ -276,4 +278,10 @@ public class UserService {
                 .orElseThrow(() -> new BadRequestException("User not found"));
         user.setFcmToken(fcmToken);
     }
+
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found with id: " + userId));
+    }
+
 }
