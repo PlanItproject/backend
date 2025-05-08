@@ -12,6 +12,7 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     List<NotificationEntity> findByUserAndIsReadFalse(User user);
 
     List<NotificationEntity> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
     List<NotificationEntity> findByType(NotificationType type);
 
 }
