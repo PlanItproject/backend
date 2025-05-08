@@ -43,11 +43,20 @@ public class SecurityConfig {
 //                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
-            // URL별 접근 권한 설정
+                // URL별 접근 권한 설정
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // WebSocket 엔드포인트(/ws/**)도 모두 허용
                         .requestMatchers("/ws/**").permitAll()
+
+                        .requestMatchers("/index.html").permitAll()
+                        .requestMatchers("/assets/**").permitAll()
+                        .requestMatchers("/favicon.ico").permitAll()
+                        .requestMatchers("/splash").permitAll()
+                        .requestMatchers("/register").permitAll()
+                        .requestMatchers("/login").permitAll()
+                        .requestMatchers("/mypage").permitAll()
+
                         .requestMatchers("/notifications/test-send").permitAll()
                         .requestMatchers("/notifications/*/fcm-token").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
@@ -77,7 +86,7 @@ public class SecurityConfig {
                 "http://13.124.18.96:9090",
                 "http://localhost:63342",
                 "http://localhost:5173",
-                "http://3.107.59.166:9090"
+                "http://54.206.71.88:9090"
         ));
         // 허용할 HTTP 메서드 설정
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
