@@ -155,6 +155,9 @@ public class UserService {
         TemporaryUser tempUser = temporaryUserRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Temporary user not found."));
 
+        if (userRepository.existsByNickname(nickname)) {
+            throw new BadRequestException("이미 사용 중인 닉네임 입니다!");
+        }
 
         // email_verification 테이블에서 해당 임시 사용자와 관련된 모든 레코드를 먼저 삭제
         emailVerificationRepository.deleteByTemporaryUserId_Email(email);
@@ -201,9 +204,11 @@ public class UserService {
     @Transactional
     public void deactivate(Long userId, DeleteReqeust deleteReqeust) {
         // "기타"를 선택한 경우 상세 사유 검증
-        if(deleteReqeust.getDeleteReason() == DeleteReason.OTHER &&
-                (deleteReqeust.getDeleteReason_Description() == null || deleteReqeust.getDeleteReason_Description().isEmpty())) {
-            throw new BadRequestException("Please provide a detailed reason when selecting 'Other' as the withdrawal reason.");
+        if (deleteReqeust.getDeleteReason() == DeleteReason.OTHER &&
+                (deleteReqeust.getDeleteReason_Description() == null || deleteReqeust.getDeleteReason_Description()
+                        .isEmpty())) {
+            throw new BadRequestException(
+                    "Please provide a detailed reason when selecting 'Other' as the withdrawal reason.");
         }
 
         User user = userRepository.findById(userId)
@@ -224,7 +229,7 @@ public class UserService {
     }
 
 
-//  @Scheduled(cron = "0 0 * * * *")
+    //  @Scheduled(cron = "0 0 * * * *")
     // 개발 test용 오전 9시로 설정
     @Scheduled(cron = "0 00 9 * * *")
     @Transactional
