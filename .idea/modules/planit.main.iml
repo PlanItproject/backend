@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="4">
+  <component name="AdditionalModuleElements">
+    <content url="file://$MODULE_DIR$/../../planit/build/generated/sources/annotationProcessor/java/main">
+      <sourceFolder url="file://$MODULE_DIR$/../../planit/build/generated/sources/annotationProcessor/java/main" isTestSource="false" generated="true" />
+    </content>
+  </component>
+  <component name="FacetManager">
+    <facet type="jpa" name="JPA">
+      <configuration>
+        <setting name="validation-enabled" value="true" />
+        <setting name="provider-name" value="Hibernate" />
+        <datasource-mapping>
+          <factory-entry name="entityManagerFactory" value="5a045ce7-eba1-4532-9197-ba720c5701fe" />
+          <factory-entry name="planit.main" value="5a045ce7-eba1-4532-9197-ba720c5701fe" />
+        </datasource-mapping>
+        <naming-strategy-map>
+          <unit-entry name="entityManagerFactory" />
+        </naming-strategy-map>
+      </configuration>
+    </facet>
+  </component>
+</module>

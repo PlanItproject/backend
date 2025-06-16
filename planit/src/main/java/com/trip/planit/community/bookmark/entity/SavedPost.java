@@ -20,8 +20,8 @@ public class SavedPost {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id")
+    @Enumerated(EnumType.STRING) // 또는 EnumType.ORDINAL
+    @Column(name = "post_id")
     private PostCategory post;
 
     @ManyToOne(fetch = FetchType.LAZY)

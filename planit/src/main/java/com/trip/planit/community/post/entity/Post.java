@@ -1,8 +1,10 @@
 package com.trip.planit.community.post.entity;
 
+import com.trip.planit.User.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +29,17 @@ public class Post {
     private String locationName; // 장소 이름
     private Double latitude; // 위도
     private Double longitude; // 경도
+    private LocalDateTime createdAt; // 작성 시간 필드 추가
+
+    @PrePersist // 엔티티 저장 전에 호출 - 자동으로 생성 시간 설정
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "author_id") // 외래 키 매핑: User 테이블의 user_id
+    private User author; // 작성자를 User 객체로 매핑
+
 
     // 기존 단일 이미지 URL 필드 삭제
     // private String imageUrl;

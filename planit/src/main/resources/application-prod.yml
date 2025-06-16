@@ -1,0 +1,46 @@
+spring:
+  profiles: prod
+
+  datasource:
+    hikari:
+      connectionTimeout: 60000
+    url: jdbc:mysql://3.27.120.252:3306/planit_prod
+    username: prod_user
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: planit745@gmail.com
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            enable: false
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.web.servlet.DispatcherServlet: INFO
+
+aws:
+  s3:
+    accessKey: ${AWS_ACCESS_KEY_ID}
+    secretKey: ${AWS_SECRET_ACCESS_KEY}
+    region: ${AWS_REGION}
+    bucketName: ${AWS_S3_BUCKET_NAME}

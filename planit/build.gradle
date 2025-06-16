@@ -7,6 +7,14 @@ plugins {
 group = 'com.trip'
 version = '0.0.1-SNAPSHOT'
 
+jar {
+	enabled = false
+}
+
+bootJar {
+	archiveFileName = 'planit.jar'
+}
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
@@ -28,24 +36,64 @@ dependencies {
 
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-	//	aws
-	implementation 'io.awspring.cloud:spring-cloud-starter-aws:2.4.4'
-	implementation 'commons-io:commons-io:2.14.0'
-	implementation 'commons-fileupload:commons-fileupload:1.5'
-	implementation 'org.apache.tika:tika-core:2.9.1'
-
 	//mysql
-	implementation 'mysql:mysql-connector-java:8.0.26'
+	runtimeOnly 'com.mysql:mysql-connector-j'
 
 	//redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.boot:spring-boot-starter-cache'
+
+	// JWT dependencies
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// swagger
+	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6"
+
+	// Spring Boot Starter Mail
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	implementation 'com.sun.mail:jakarta.mail:2.0.1'
+
+	// OAuth2
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // OAuth2 Client
+	implementation 'org.springframework.boot:spring-boot-starter-security' // Spring Security
+
+	// Image
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.511'
+
+	// websocket
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+	// Amadeus Java API
+	implementation 'com.amadeus:amadeus-java:5.7.2'
+
+  	// JSON 직렬화를 위한 의존성 (기본적으로 spring-boot-starter-json 포함되어 있음)
+  	implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+
+	implementation 'com.google.firebase:firebase-admin:9.1.1'
+
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+}
+
+configurations.all {
+	resolutionStrategy.eachDependency { details ->
+		if (details.requested.group == 'org.springframework' &&
+				details.requested.name == 'spring-webmvc') {
+			details.useVersion '6.2.0'
+		}
+	}
 }
 
 tasks.named('test') {

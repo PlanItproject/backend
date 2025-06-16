@@ -1,19 +1,24 @@
 package com.trip.planit.community.post.controller;
 
+import com.trip.planit.User.entity.User;
 import com.trip.planit.community.post.dto.PostDto;
 import com.trip.planit.community.post.entity.Post;
 import com.trip.planit.community.post.service.PostService;
 import com.trip.planit.community.post.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.trip.planit.community.follow.service.FollowService;
 
 import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@CrossOrigin
+
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+
 @RestController
 @RequestMapping("/community/posts")
 @RequiredArgsConstructor
@@ -21,6 +26,8 @@ public class PostController {
 
     private final PostService postService;
     private final PostRepository postRepository;
+    private final FollowService followService;
+
 
     // 모든 게시글 조회
     @GetMapping
@@ -33,6 +40,25 @@ public class PostController {
     public ResponseEntity<PostDto> getPostById(@PathVariable Long id) {
         return ResponseEntity.ok(postService.getPostById(id));
     }
+  
+
+    // 3. 팔로우한 유저의 게시글 조회
+    @GetMapping("/followed")
+    public ResponseEntity<List<PostDto>> getFollowedPosts(@AuthenticationPrincipal User currentUser) {
+        // 1. 팔로우한 유저 가져오기
+        List<User> followings = followService.getFollowings(currentUser);
+
+        // 2. 팔로우한 유저들의 게시글 가져오기
+        List<Post> followedPosts = postRepository.findByAuthorInOrderByCreatedAtDesc(followings);
+
+        // 3. DTO 변환 및 반환
+        List<PostDto> result = followedPosts.stream()
+                .map(postService::toDto) // Post -> PostDto
+                .toList();
+
+        return ResponseEntity.ok(result);
+    }
+
 
     // 게시글 생성 (다중 이미지 업로드 추가)
     @PostMapping

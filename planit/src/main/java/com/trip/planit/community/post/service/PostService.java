@@ -20,6 +20,7 @@ public class PostService {
 
     private final PostRepository postRepository;
 
+
     // 모든 게시글 조회
     public List<PostDto> getAllPosts() {
         return postRepository.findAll().stream()
@@ -33,6 +34,7 @@ public class PostService {
                 .orElseThrow(() -> new EntityNotFoundException("해당 게시글을 찾을 수 없습니다."));
         return PostDto.fromEntity(post);
     }
+  
 
     // 게시글 작성
     public PostDto createPost(PostDto postDto) {
@@ -92,6 +94,7 @@ public class PostService {
         return postRepository.save(post);
     }
 
+
     // 게시글 삭제
     public void deletePost(Long id) {
         if (!postRepository.existsById(id)) {
@@ -120,4 +123,16 @@ public class PostService {
             throw new RuntimeException("이미지 업로드에 실패하였습니다: " + e.getMessage());
         }
     }
+
+    public PostDto toDto(Post post) {
+        // Post 객체를 PostDto로 변환
+        return PostDto.builder()
+                .id(post.getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .createdAt(post.getCreatedAt())
+                .author(post.getAuthor().getNickname()) // User 엔터티의 nickname 매핑
+                .build();
+    }
+
 }

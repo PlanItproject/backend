@@ -1,5 +1,7 @@
 package com.trip.planit.community.post.service;
 
+import com.trip.planit.Notification.model.NotificationType;
+import com.trip.planit.Notification.service.NotificationService;
 import com.trip.planit.User.entity.User;
 import com.trip.planit.User.repository.UserRepository;
 import com.trip.planit.community.post.dto.PostCommentRequestDTO;
@@ -8,6 +10,8 @@ import com.trip.planit.community.post.entity.Post;
 import com.trip.planit.community.post.entity.PostComment;
 import com.trip.planit.community.post.repository.PostCommentRepository;
 import com.trip.planit.community.post.repository.PostRepository;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +22,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PostCommentService {
 
+    private final NotificationService notificationService;
     private final PostCommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
@@ -35,6 +40,17 @@ public class PostCommentService {
                 .build();
 
         PostComment savedComment = commentRepository.save(comment);
+
+        // 자신의 게시글에 댓글을 단 경우가 아닐 때만 알림 생성
+        if (!post.getAuthor().getUserId().equals(user.getUserId())) {
+            String message = String.format("%s님이 회원님의 게시글에 댓글을 달았습니다.", user.getNickname());
+            notificationService.sendNotification(
+                    message,
+                    post.getAuthor().getUserId(),
+                    NotificationType.REPLY
+            );
+        }
+
 
         return toResponseDTO(savedComment);
     }
@@ -63,6 +79,17 @@ public class PostCommentService {
         }
 
         comment.updateContent(requestDTO.getContent());
+
+        // 댓글 수정 시에도 알림을 보낼 수 있습니다 (선택적)
+        if (!comment.getPost().getAuthor().getUserId().equals(user.getUserId())) {
+            String message = String.format("%s님이 회원님의 게시글의 댓글을 수정했습니다.", user.getNickname());
+            notificationService.sendNotification(
+                    message,
+                    comment.getPost().getAuthor().getUserId(),
+                    NotificationType.REPLY
+            );
+        }
+
 
         return toResponseDTO(comment);
     }
@@ -104,5 +131,7 @@ public class PostCommentService {
                 .authorName(comment.getAuthor().getNickname()) // 사용자에게 보여질 닉네임
                 .build();
     }
+
+
 
 }

@@ -1,0 +1,78 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    hikari:
+      connectionTimeout: 60000
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://docker-mysql-test.cl82gmc8wwsn.ap-southeast-2.rds.amazonaws.com:3306/planit
+    username: user
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        jdbc:
+          time_zone: "Asia/Seoul"  # 타임존 설정 추가
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: planit745@gmail.com
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            enable: false
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+server:
+  address: 0.0.0.0
+  port: 9090
+  servlet:
+    session:
+      cookie:
+        secure: false  # 개발 환경에서는 HTTP 사용 시 secure 옵션을 false로 설정
+
+
+jwt:
+  secret: ${JWT_SECRET}
+
+google:
+  api:
+    key: ${GOOGLE_API_KEY}
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet.DispatcherServlet: TRACE
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    with-credentials: true
+
+aws:
+  s3:
+    accessKey: ${AWS_ACCESS_KEY_ID}
+    secretKey: ${AWS_SECRET_ACCESS_KEY}
+    region: ${AWS_REGION}
+    bucketName: ${AWS_S3_BUCKET_NAME}
+
+amadeus:
+  clientId: dsje7yv9MN7hxcYnHRymquJPZrAdkHyP
+  clientSecret: XB4GAENJV89oWea2

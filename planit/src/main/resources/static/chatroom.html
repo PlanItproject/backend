@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>채팅 모듈 테스트 UI (카카오톡 스타일)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .panel { border: 1px solid #ccc; padding: 1em; margin-bottom: 1em; }
+    h2, h3 { margin-top: 0; }
+    .log { font-size: 0.9em; color: #555; white-space: pre-wrap; margin-top: 0.5em; }
+    .messages { list-style: none; padding: 0; }
+    .messages li { padding: 5px; border-bottom: 1px solid #eee; cursor: pointer; }
+    .messages li:hover { background: #f0f0f0; }
+    #chatInterfacePanel { display: none; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+<h1>채팅 모듈 테스트 UI (카카오톡 스타일)</h1>
+
+<!-- 로그인 -->
+<div class="panel" id="loginPanel">
+  <h2>로그인</h2>
+  <form id="loginForm">
+    <label>이메일:</label>
+    <input type="email" id="email" placeholder="user@example.com" required><br>
+    <label>비밀번호:</label>
+    <input type="password" id="password" required>
+    <button type="submit">로그인</button>
+  </form>
+  <div id="loginResult" class="log"></div>
+</div>
+
+<!-- 채팅방 생성 -->
+<div class="panel" id="chatRoomCreatePanel" style="display:none;">
+  <h2>채팅방 생성</h2>
+  <form id="createChatRoomForm">
+    <label>대화 상대 ID:</label>
+    <input type="number" id="guestId" placeholder="예: 2" required>
+    <button type="submit">채팅방 생성</button>
+  </form>
+  <div id="createChatRoomResult" class="log"></div>
+</div>
+
+<!-- 채팅방 목록 -->
+<div class="panel" id="chatRoomListPanel" style="display:none;">
+  <h2>내 채팅방 목록</h2>
+  <button onclick="loadChatRooms()">새로고침</button>
+  <ul id="chatRoomList" class="messages"></ul>
+  <div id="chatRoomListLog" class="log"></div>
+</div>
+
+<!-- 채팅 인터페이스 -->
+<div class="panel" id="chatInterfacePanel">
+  <button id="backButton" onclick="backToRoomList()">뒤로가기</button>
+  <h3>채팅방: <span id="chatRoomTitle"></span></h3>
+  <p id="chatRoomLastMessage" class="log"></p>
+  <ul id="chatMessages" class="messages"></ul>
+  <input type="text" id="messageInput" placeholder="메시지 입력..." style="width:300px;">
+  <button onclick="sendMessage()">전송</button>
+  <button onclick="leaveChatRoom()">나가기</button>
+  <div id="chatInterfaceLog" class="log"></div>
+</div>
+
+<script>
+  let loggedInUserId = null;
+  let stompClient = null;
+  let currentChatRoomId = null;
+
+  // 로그인
+  document.getElementById('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = emailInput.value, password = passwordInput.value;
+    try {
+      const res = await fetch('http://localhost:9090/public/users/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify({ email, password })
+      });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      loggedInUserId = data.userId;
+      loginResult.innerText = `로그인 성공: ${data.email}`;
+      loginPanel.style.display = 'none';
+      chatRoomCreatePanel.style.display = 'block';
+      chatRoomListPanel.style.display = 'block';
+      loadChatRooms();
+    } catch(err) {
+      loginResult.innerText = `로그인 오류: ${err}`;
+    }
+  });
+
+  // 채팅방 생성
+  createChatRoomForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      const res = await fetch('http://localhost:9090/private/create', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify({ roomMakerId: loggedInUserId, guestId: guestId.value })
+      });
+      if (!res.ok) throw new Error(res.status);
+      const room = await res.json();
+      currentChatRoomId = room.chatRoomId;
+      createChatRoomResult.innerText = `생성 성공: 방 ${currentChatRoomId}`;
+      showChatInterface();
+      connectToChatRoom();
+      loadChatRooms();
+    } catch(err) {
+      createChatRoomResult.innerText = `오류: ${err}`;
+    }
+  });
+
+  // 목록 불러오기
+  async function loadChatRooms() {
+    try {
+      const res = await fetch(
+          `http://localhost:9090/private/user/${loggedInUserId}`,
+          { credentials:'include' }
+      );
+      if (!res.ok) throw new Error(res.status);
+      const rooms = await res.json();
+      chatRoomList.innerHTML = '';
+      rooms.forEach(r => {
+        const li = document.createElement('li');
+        li.innerText = `방 ${r.chatRoomId} - 상대: ${r.otherNickname} | ${r.lastMessage}`;
+        li.onclick = () => {
+          currentChatRoomId = r.chatRoomId;
+          showChatInterface();
+          loadChatHistory();
+          connectToChatRoom();
+        };
+        chatRoomList.appendChild(li);
+      });
+      chatRoomListLog.innerText += '목록 로드 완료\n';
+    } catch(err) {
+      chatRoomListLog.innerText += `목록 오류: ${err}\n`;
+    }
+  }
+
+  // 내역 불러오기
+  async function loadChatHistory() {
+    try {
+      const res = await fetch(
+          `http://localhost:9090/private/history/${currentChatRoomId}`,
+          { credentials:'include' }
+      );
+      if (!res.ok) throw new Error(res.status);
+      const msgs = await res.json();
+      chatMessages.innerHTML = '';
+      msgs.forEach(m => {
+        const li = document.createElement('li');
+        li.innerText = `[${new Date(m.sentAt).toLocaleTimeString()}] ${m.senderNickname}: ${m.content}`;
+        chatMessages.appendChild(li);
+      });
+      chatInterfaceLog.innerText += '내역 로드 완료\n';
+    } catch(err) {
+      chatInterfaceLog.innerText += `내역 오류: ${err}\n`;
+    }
+  }
+
+  // STOMP 연결
+  function connectToChatRoom() {
+    const token = getCookie('accessToken');
+    const socket = new SockJS('http://localhost:9090/ws', null, {
+      transportOptions: {
+        xhrStreaming: { withCredentials: true },
+        xhrPolling:   { withCredentials: true }
+      }
+    });
+    stompClient = Stomp.over(socket);
+    stompClient.connect(
+        { Authorization: `Bearer ${token}` },
+        frame => {
+          chatInterfaceLog.innerText += `연결: ${frame}\n`;
+          stompClient.subscribe(
+              `/topic/private.${currentChatRoomId}`,
+              msg => {
+                const m = JSON.parse(msg.body);
+                const li = document.createElement('li');
+                li.innerText = `[${new Date(m.sentAt).toLocaleTimeString()}] ${m.senderNickname}: ${m.content}`;
+                chatMessages.appendChild(li);
+              }
+          );
+        },
+        err => chatInterfaceLog.innerText += `STOMP 오류: ${err}\n`
+    );
+  }
+
+  // 메시지 전송
+  function sendMessage() {
+    if (!stompClient || !stompClient.connected) return alert('연결되지 않음');
+    const content = messageInput.value;
+    stompClient.send(
+        '/app/chat.sendPrivateMessage',
+        {},
+        JSON.stringify({ chatRoomId: currentChatRoomId, content })
+    );
+    messageInput.value = '';
+  }
+
+  // 나가기
+  function leaveChatRoom() {
+    if (stompClient && currentChatRoomId) {
+      stompClient.send('/app/chat.leave', {}, currentChatRoomId);
+      backToRoomList();
+    }
+  }
+
+  // 뒤로가기
+  function backToRoomList() {
+    if (stompClient) stompClient.disconnect();
+    chatInterfacePanel.style.display = 'none';
+    chatRoomListPanel.style.display = 'block';
+  }
+
+  // 화면 전환 헬퍼
+  function showChatInterface() {
+    chatRoomListPanel.style.display = 'none';
+    chatInterfacePanel.style.display = 'block';
+    chatRoomTitle.innerText = currentChatRoomId;
+    chatInterfaceLog.innerText = '';
+  }
+
+  // 쿠키 파싱
+  function getCookie(name) {
+    const v = `; ${document.cookie}`.split(`; ${name}=`);
+    return v.length === 2 ? v.pop().split(';').shift() : null;
+  }
+
+  // 자동 로그인
+  window.onload = () => {
+    const tk = getCookie('accessToken');
+    if (tk) {
+      fetch('http://localhost:9090/public/users/me', {
+        credentials:'include'
+      })
+      .then(r=>r.ok?r.json():Promise.reject(r.status))
+      .then(d=>{
+        loggedInUserId = d.userId;
+        loginPanel.style.display = 'none';
+        chatRoomCreatePanel.style.display = 'block';
+        chatRoomListPanel.style.display = 'block';
+        loadChatRooms();
+      })
+      .catch(()=>{});
+    }
+  };
+</script>
+</body>
+</html>
