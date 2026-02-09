@@ -1,17 +1,24 @@
-FROM ubuntu:24.04
-MAINTAINER Hyeonjun Ann <annhj980@gmail.com>
+# 빌드 스테이지
+FROM gradle:8.5-jdk21 AS builder
+WORKDIR /app
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Gradle 설정 파일 복사
+COPY build.gradle settings.gradle ./
+COPY gradle gradle
+COPY gradlew ./
 
-RUN apt-get update
-RUN apt-get install -y apache2 # Install Apache web server (only 'yes')
-RUN apt-get install -y software-properties-common
-RUN add-apt-repository ppa:ondrej/php
-RUN apt-get update
-RUN apt-get install -y php5.6
+# 소스 코드 복사
+COPY src src
 
-RUN apt-get install -y php5.6-mysql
+# 빌드 실행
+RUN chmod +x gradlew && ./gradlew clean build -x test
 
-EXPOSE 80
+# 실행 스테이지
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
 
-CMD ["apache2ctl", "-D", "FOREGROUND"]
+# 빌드 스테이지에서 JAR 파일 복사
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
